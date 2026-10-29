@@ -2,6 +2,9 @@
 
 > **No hace falta ejecutar nada.** Todo se explica leyendo el código.
 > Tiempo estimado: 5–7 minutos.
+>
+> Si te piden verlo funcionando, la sección **6** trae una colección de Postman
+> opcional. La sección **7** explica por qué el dominio no lleva anotaciones.
 
 Abrí el proyecto en el IDE y seguí este orden. Las rutas son relativas a
 `src/main/java/com/smd/inventario/`.
@@ -185,7 +188,150 @@ Si te piden ejecutar:
 .\mvnw.cmd test
 ```
 
-Son 16 casos de State + 5 de Composite.
+Son 16 casos de State + 5 de Composite, más 5 del controller: **28 en total**.
+
+---
+
+## 6. Versión HTTP para Postman (opcional)
+
+Si te piden “mostralo funcionando”, el mismo dominio está expuesto por un
+controller **de demo**. No es la API definitiva: guarda todo en memoria y se
+reinicia con un request.
+
+**Archivos:**
+
+- `presentation/demo/DemoController.java` — los endpoints
+- `presentation/demo/InventarioDemo.java` — almacén en memoria
+- `docs/http/demo-state-composite.postman_collection.json` — la colección
+
+### Levantar la app
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Queda en <http://localhost:8080> (perfil `dev`, H2 en memoria).
+
+### Importar la colección
+
+1. Postman → **Import** → **File** → elegir el `.json`.
+2. Verificar la variable `baseUrl` = `http://localhost:8080`.
+3. Ejecutar en orden, o correr toda la carpeta con **Run collection**.
+
+### Recorrido que muestra
+
+| # | Request | Resultado |
+|---|---|---|
+| 00 | `POST /api/demo/reset` | Inventario vacío |
+| 01 | `POST /api/demo/colchones` | Colchón en `PRODUCIDO` |
+| 02 | `POST /api/demo/items/COLCHON-DEMO-01/ingresar` | → `EN_DEPOSITO` |
+| 03 | `POST .../reservar` | → `RESERVADO` |
+| 04 | `POST .../despachar` | → `DESPACHADO` |
+| 05 | `POST .../reservar` otra vez | **409** `TRANSICION_INVALIDA` |
+| 06 | `POST /api/demo/lotes` | Lote de 5, `cantidad: 5` |
+| 07 | `POST .../LOTE-DEMO-01/ingresar` | Lote **y sus 5 hijos** → `EN_DEPOSITO` |
+| 08 | `POST .../LOTE-DEMO-01/reservar` | Todos → `RESERVADO` |
+| 09 | `POST .../LOTE-DEMO-01/despachar` | Todos → `DESPACHADO` |
+| 10 | `GET /api/demo/items` | Árbol con el estado de cada hijo |
+| 11 | `POST .../NO-EXISTE/reservar` | **404** `RECURSO_NO_ENCONTRADO` |
+
+### Endpoints
+
+| Método | Ruta | Body |
+|---|---|---|
+| `POST` | `/api/demo/colchones` | `{"codigo":"...","estado":"PRODUCIDO"}` |
+| `POST` | `/api/demo/lotes` | `{"codigo":"...","estado":"PRODUCIDO","cantidad":5}` |
+| `POST` | `/api/demo/items/{codigo}/ingresar` | — |
+| `POST` | `/api/demo/items/{codigo}/reservar` | — |
+| `POST` | `/api/demo/items/{codigo}/cancelar` | — |
+| `POST` | `/api/demo/items/{codigo}/despachar` | — |
+| `GET` | `/api/demo/items` | — |
+| `POST` | `/api/demo/reset` | — |
+
+`estado` es opcional (por defecto `PRODUCIDO`) y `cantidad` también (por
+defecto `5`).
+
+### Cómo se traducen los errores
+
+| Excepción del dominio | HTTP | `codigo` |
+|---|---|---|
+| `TransicionInvalidaException` | 409 | `TRANSICION_INVALIDA` |
+| `RecursoNoEncontradoException` | 404 | `RECURSO_NO_ENCONTRADO` |
+| `IllegalArgumentException` | 400 | `SOLICITUD_INVALIDA` |
+
+> “Fijate que el dominio lanza excepciones de negocio y el controller las
+> traduce a HTTP. El dominio no sabe que existe HTTP.”
+
+Si preferís no abrir Postman, el mismo flujo está verificado en
+`DemoControllerTest` con MockMvc.
+
+---
+
+## 7. ¿Por qué no hay anotaciones de Spring en el dominio?
+
+Porque es **intencional**. El proyecto separa el núcleo del framework:
+
+| Capa | Paquete | Anotaciones |
+|---|---|---|
+| Dominio | `domain/**` | **ninguna** |
+| Persistencia | `persistence/**` | `@Entity`, `@Table`, `@Id`, `@Column` |
+| Aplicación / configuración | `config/**` | `@Component`, `@Profile` |
+| Presentación | `presentation/**` | `@RestController`, `@Service`, `@RequestMapping` |
+
+Las anotaciones **sí existen**; están en las capas de infraestructura. Por
+ejemplo:
+
+```java
+@RestController
+@RequestMapping("/api/demo")
+public class DemoController { ... }
+```
+
+```java
+@Service
+public class InventarioDemo { ... }
+```
+
+```java
+@Entity
+@Table(name = "item_inventario")
+public class ItemInventarioEntity { ... }
+```
+
+### Por qué el dominio queda limpio
+
+- Se prueba con JUnit **sin levantar Spring** (`StateTest` y `CompositeTest` no
+  usan `@SpringBootTest`).
+- No depende de Jakarta ni de Spring: si mañana cambia el framework, el dominio
+  no se toca.
+- El foco del TP son los patrones, no las anotaciones.
+
+> “Spring se queda en el borde: recibe el request, llama al dominio y traduce
+> la respuesta. El dominio no sabe que hay un servidor web.”
+
+### ¿Y el `@Autowired` de los constructores?
+
+No hace falta. Desde **Spring 4.3**, si una clase tiene **un único
+constructor**, Spring lo usa automáticamente y le inyecta los parámetros:
+
+```java
+@RestController
+public class DemoController {
+
+    private final InventarioDemo inventario;
+
+    public DemoController(InventarioDemo inventario) {  // sin @Autowired
+        this.inventario = inventario;
+    }
+}
+```
+
+`@Autowired` solo es necesario si hay **más de un constructor** y hay que
+decirle cuál usar. La inyección por constructor es la recomendada porque:
+
+- los campos pueden ser `final`;
+- la clase no se puede crear “a medias”;
+- en un test la instanciás con `new DemoController(inventarioDemo)` sin Spring.
 
 ---
 
@@ -212,6 +358,16 @@ Son 16 casos de State + 5 de Composite.
 > El enum (`EstadoProducto`) es el dato que se persiste y viaja en el DTO. Las
 > clases de estado son el comportamiento. `Estados` traduce uno al otro.
 
+**¿Por qué el dominio no tiene anotaciones de Spring?**
+> Porque el dominio es Java puro y se prueba sin framework. Las anotaciones
+> (`@RestController`, `@Service`, `@Entity`) viven en `presentation`,
+> `persistence` y `config`. Es una separación deliberada, no un olvido.
+
+**¿Por qué los constructores no llevan `@Autowired`?**
+> Desde Spring 4.3, con un único constructor Spring inyecta solo. `@Autowired`
+> solo hace falta si hay varios constructores. La inyección por constructor es
+> la recomendada: campos `final` y tests con `new`.
+
 **¿Dónde se guarda esto en la base?**
 > En `persistence/entity/ItemInventarioEntity`, el estado se guarda como texto
 > (`@Enumerated(EnumType.STRING)`). La demo de mañana es solo dominio.
@@ -233,6 +389,9 @@ Son 16 casos de State + 5 de Composite.
 | `domain/composite/Lote.java` | Compuesto: cantidad y cascada |
 | `domain/exception/TransicionInvalidaException.java` | Error de transición |
 | `domain/state/StateTest.java` | Las 16 combinaciones |
+| `presentation/demo/DemoController.java` | Endpoints de la demo (opcional) |
+| `presentation/demo/InventarioDemo.java` | Almacén en memoria (opcional) |
+| `docs/http/demo-state-composite.postman_collection.json` | Colección de Postman |
 
 ---
 
@@ -240,7 +399,9 @@ Son 16 casos de State + 5 de Composite.
 
 Para no prometer de más:
 
-- `GestorDeStock`, `FachadaEscaneo` y la API REST: próximos sprints.
+- La API REST **definitiva** (fachada + persistencia): próximos sprints. El
+  `DemoController` es un atajo didáctico y no persiste nada.
+- `GestorDeStock` y `FachadaEscaneo`: próximos sprints.
 - Strategy (mínimo de 5 para Rubín), Decorator y Observer: asignados a B y C.
 - Persistencia de movimientos y auditoría: D.
 

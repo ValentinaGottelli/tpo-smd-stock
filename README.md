@@ -90,6 +90,11 @@ Lo que se muestra es el núcleo del dominio:
 
 Si te piden ejecutar algo: `.\mvnw.cmd test`.
 
+Para mostrarlo por HTTP hay una colección de Postman en
+`docs/http/demo-state-composite.postman_collection.json` y un controller de
+demo en `presentation/demo`. Es **descartable**: guarda en memoria y no es la
+API definitiva.
+
 ---
 
 ## Estructura
@@ -99,6 +104,10 @@ Entrega3/
 ├── DEMO.md                            # guía para mostrar en clase
 ├── pom.xml
 ├── mvnw / mvnw.cmd / .mvn/            # Maven Wrapper
+├── docs/
+│   ├── PLAN-TRABAJO.md
+│   ├── equipo/                        # contratos y planes por rol
+│   └── http/                          # colección de Postman
 ├── src/main/java/com/smd/inventario/
 │   ├── InventarioApplication.java
 │   ├── config/                        # seeder de datos de ejemplo
@@ -112,6 +121,7 @@ Entrega3/
 │   │   └── repository/                # Spring Data
 │   └── presentation/
 │       ├── controller/                # health
+│       ├── demo/                      # controller en memoria (State + Composite)
 │       └── dto/                       # respuesta del health
 ├── src/main/resources/
 │   ├── application.properties
@@ -119,7 +129,7 @@ Entrega3/
 │   ├── application-devfile.properties # H2 archivo
 │   └── data.sql                       # datos de ejemplo (dev)
 ├── data/                              # base H2 (generada, no se versiona)
-└── src/test/java/...                  # tests de State y Composite
+└── src/test/java/...                  # tests de State, Composite y demo HTTP
 ```
 
 > Las carpetas de los patrones que faltan (`decorator`, `strategy`, `observer`,
@@ -146,6 +156,7 @@ Entrega3/
 ## Documentación del grupo
 
 - `DEMO.md` — guía para mostrar State + Composite en clase
+- `docs/http/demo-state-composite.postman_collection.json` — colección para probarlo por HTTP
 - `docs/PLAN-TRABAJO.md` — reparto, sprints y reglas de trabajo
 - `docs/equipo/CONTRATOS.md` — interfaces acordadas (**leer antes de codificar**)
 - `docs/equipo/ROL-*.md` — plan individual de cada integrante
