@@ -8,7 +8,7 @@
 ## Mensaje para el grupo
 
 > Me encargo de que todo se guarde bien: entidades JPA, repositorios, mappers y
-> datos de demo. Implemento los puertos que define A (`RepositorioItems`,
+> datos de presentación. Implemento los puertos que define A (`RepositorioItems`,
 > `RepositorioMovimientos`). No escribo lógica de negocio.
 
 ---
@@ -70,9 +70,9 @@ Cuidar que `stockDisponible()` sume solo `EN_DEPOSITO` y evitar
 **Tests:** `buscarMasAntiguoEnDeposito` respeta la fecha; auditoría ordenada
 descendente; el stock suma solo lo disponible.
 
-### D3 — Datos de demo y ajustes (S2)
+### D3 — Datos de presentación y ajustes (S2)
 
-- Datos coherentes para la demo: 2 colchones, 1 lote de 5, un ítem reservado.
+- Datos coherentes para la presentación: 2 colchones, 1 lote de 5, un ítem reservado.
 - Acordar con A dónde va `@Transactional` (recomendado: `GestorDeStock`).
 - Probar con A y C el flujo completo sobre el perfil `devfile` y confirmar que
   los datos sobreviven al reinicio.
@@ -84,7 +84,7 @@ datos.
 
 - Diagrama entidad-relación y justificación del modelo relacional.
 - Sección del informe: mapeo objeto-relacional y transacciones.
-- Demo: mostrar las tablas en la consola H2 antes y después de un despacho.
+- Presentación: mostrar las tablas en la consola H2 antes y después de un despacho.
 
 ---
 
@@ -113,6 +113,6 @@ datos.
 - [ ] Entidades y repositorios con tests `@DataJpaTest`.
 - [ ] Mappers y puertos implementados.
 - [ ] Consulta FIFO funcionando.
-- [ ] Datos de demo y reinicio con `devfile` verificado.
+- [ ] Datos de presentación y reinicio con `devfile` verificado.
 - [ ] Diagrama ER y sección del informe.
-- [ ] Demo de la base para el oral.
+- [ ] Presentación de la base para el oral.

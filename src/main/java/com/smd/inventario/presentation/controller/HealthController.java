@@ -32,7 +32,7 @@ public class HealthController {
 
     @GetMapping
     public HealthResponse verificar() {
-        long items = itemInventarioRepository.count();
+        long items = itemInventarioRepository.countByCodigoPadreIsNull();
 
         return new HealthResponse(
                 "OK",

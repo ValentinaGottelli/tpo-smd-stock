@@ -9,11 +9,10 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Repositorio de ítems de inventario.
+ * Repositorio Spring Data de ítems de inventario.
  *
- * <p>En la versión completa, la capa de dominio accede a la persistencia a
- * través de una interfaz propia (por ejemplo {@code RepositorioItems}) y esta
- * interfaz queda como implementación concreta con Spring Data JPA.</p>
+ * <p>Es la implementación concreta que usa {@link JpaRepositorioItems} para
+ * cumplir el puerto {@code domain.port.RepositorioItems}.</p>
  */
 public interface ItemInventarioRepository extends JpaRepository<ItemInventarioEntity, Long> {
 
@@ -24,4 +23,15 @@ public interface ItemInventarioRepository extends JpaRepository<ItemInventarioEn
     List<ItemInventarioEntity> findByTipo(TipoItem tipo);
 
     long countByEstado(EstadoProducto estado);
+
+    List<ItemInventarioEntity> findByCodigoPadreIsNullOrderByCodigoAsc();
+
+    List<ItemInventarioEntity> findByCodigoPadreIsNullAndEstadoOrderByCodigoAsc(EstadoProducto estado);
+
+    List<ItemInventarioEntity> findByCodigoPadreOrderByCodigoAsc(String codigoPadre);
+
+    Optional<ItemInventarioEntity> findFirstByCodigoPadreIsNullAndEstadoOrderByFechaProduccionAscCodigoAsc(
+            EstadoProducto estado);
+
+    long countByCodigoPadreIsNull();
 }

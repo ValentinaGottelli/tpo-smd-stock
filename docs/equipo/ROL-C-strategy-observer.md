@@ -87,7 +87,7 @@ falla no rompe el flujo.
 
 - Sección de Strategy (canales, mínimo mayorista) y de Observer (emisor,
   observadores, integración con State).
-- Guion de demo: minorista OK, mayorista rechazada, mayorista OK, cancelación y
+- Guion de presentación: minorista OK, mayorista rechazada, mayorista OK, cancelación y
   notificación en el dashboard.
 
 ---
@@ -119,4 +119,4 @@ falla no rompe el flujo.
 - [ ] Observer con dos observadores y test de notificación única.
 - [ ] `ServicioConsultas` + tests.
 - [ ] Auditoría visible tras reiniciar con `devfile`.
-- [ ] Secciones del informe y guion de demo.
+- [ ] Secciones del informe y guion de presentación.

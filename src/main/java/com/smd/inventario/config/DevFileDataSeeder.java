@@ -1,9 +1,8 @@
 package com.smd.inventario.config;
 
 import com.smd.inventario.domain.model.EstadoProducto;
-import com.smd.inventario.domain.model.TipoItem;
-import com.smd.inventario.persistence.entity.ItemInventarioEntity;
-import com.smd.inventario.persistence.repository.ItemInventarioRepository;
+import com.smd.inventario.domain.service.GestorDeStock;
+import com.smd.inventario.domain.service.ServicioConsultas;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -12,7 +11,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * Carga datos de ejemplo al arrancar con el perfil {@code devfile}.
@@ -27,33 +25,28 @@ public class DevFileDataSeeder implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevFileDataSeeder.class);
 
-    private final ItemInventarioRepository itemInventarioRepository;
+    private final GestorDeStock gestor;
+    private final ServicioConsultas consultas;
 
-    public DevFileDataSeeder(ItemInventarioRepository itemInventarioRepository) {
-        this.itemInventarioRepository = itemInventarioRepository;
+    public DevFileDataSeeder(GestorDeStock gestor, ServicioConsultas consultas) {
+        this.gestor = gestor;
+        this.consultas = consultas;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        long existentes = itemInventarioRepository.count();
-
-        if (existentes > 0) {
-            log.info("Base H2 en archivo con {} items: no se cargan datos de ejemplo.", existentes);
+        if (!consultas.listar(null).isEmpty()) {
+            log.info("Base H2 en archivo con datos: no se cargan items de ejemplo.");
             return;
         }
 
-        itemInventarioRepository.saveAll(List.of(
-                new ItemInventarioEntity(
-                        "COLCHON-QR-0001", TipoItem.COLCHON,
-                        EstadoProducto.EN_DEPOSITO, 1, LocalDate.of(2026, 9, 1)),
-                new ItemInventarioEntity(
-                        "COLCHON-QR-0002", TipoItem.COLCHON,
-                        EstadoProducto.EN_DEPOSITO, 1, LocalDate.of(2026, 9, 5)),
-                new ItemInventarioEntity(
-                        "LOTE-QR-0001", TipoItem.LOTE,
-                        EstadoProducto.PRODUCIDO, 5, LocalDate.of(2026, 9, 10))
-        ));
+        gestor.registrarColchon(
+                "COLCHON-QR-0001", EstadoProducto.EN_DEPOSITO, LocalDate.of(2026, 9, 1));
+        gestor.registrarColchon(
+                "COLCHON-QR-0002", EstadoProducto.EN_DEPOSITO, LocalDate.of(2026, 9, 5));
+        gestor.registrarLote(
+                "LOTE-QR-0001", EstadoProducto.EN_DEPOSITO, LocalDate.of(2026, 9, 10), 5);
 
-        log.info("Base H2 en archivo inicializada con 3 items de ejemplo.");
+        log.info("Base H2 en archivo inicializada con 3 items raiz y un lote de 5 colchones.");
     }
 }

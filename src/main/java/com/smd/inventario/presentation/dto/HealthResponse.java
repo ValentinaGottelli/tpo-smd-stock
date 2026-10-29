@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * @param aplicacion       nombre lógico de la aplicación.
  * @param perfiles         perfiles de Spring activos.
  * @param baseDeDatos      motor de base de datos en uso.
- * @param itemsRegistrados cantidad de filas leídas desde la base.
+ * @param itemsRegistrados cantidad de ítems raíz (colchones sueltos y lotes).
  * @param fechaHora        momento del chequeo.
  */
 public record HealthResponse(

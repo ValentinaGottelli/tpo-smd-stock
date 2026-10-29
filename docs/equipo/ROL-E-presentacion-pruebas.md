@@ -11,7 +11,7 @@
 > Me encargo de la cara visible del sistema: los endpoints REST, los DTOs de la
 > API, el manejo de errores, la fachada de escaneo que usan los controllers, los
 > adapters de lectores QR y las pruebas de punta a punta. También dejo el archivo
-> `.http` y el README de la API para la demo.
+> `.http` y el README de la API para la presentación.
 
 ---
 
@@ -76,8 +76,8 @@ error.
 - `LectorCodigo` con `String leer()`.
 - `AdaptadorCamara` y `AdaptadorPistolaUSB` traducen dos APIs distintas
   (simuladas dentro de `presentation/adapter`).
-- `LectorCodigoSimulado` para tests y demo.
-- Endpoint de demo opcional: `POST /api/lectores/{tipo}/leer`.
+- `LectorCodigoSimulado` para tests y presentación.
+- Endpoint opcional para la presentación: `POST /api/lectores/{tipo}/leer`.
 
 **Tests:** los tres lectores devuelven `String`; agregar un lector nuevo no
 obliga a tocar el resto; las clases simuladas de SDK no salen de los adapters.
@@ -100,7 +100,7 @@ DTO; no hay lógica duplicada.
   maestro en perfil `dev`.
 - README de la API: cómo levantar, tabla de endpoints, ejemplos y códigos de
   error.
-- Guion de demo con `.http`: ingreso, reserva minorista, mayorista rechazada,
+- Guion de presentación con `.http`: ingreso, reserva minorista, mayorista rechazada,
   mayorista OK, despacho y auditoría.
 - Repaso de Facade y Adapter para el oral.
 
@@ -140,4 +140,4 @@ DTO; no hay lógica duplicada.
 - [ ] Adapter de cámara y pistola + simulado, con tests.
 - [ ] Suite e2e de los 8 escenarios.
 - [ ] `.http` y README de API.
-- [ ] Guion de demo de la capa REST.
+- [ ] Guion de presentación de la capa REST.

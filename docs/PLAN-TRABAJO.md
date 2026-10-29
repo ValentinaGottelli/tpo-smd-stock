@@ -21,14 +21,15 @@ infraestructura.
 - Base relacional **H2** (en memoria y en archivo). Sin instalar nada.
 - Los 9 patrones del informe: State, Composite, Singleton, Facade, Decorator,
   Simple Factory, Strategy, Observer y Adapter.
-- API REST mínima, tests unitarios y demo de punta a punta.
+- API REST mínima, tests unitarios y presentación de punta a punta.
 
 **No entra** (si el docente lo pide, se evalúa como extra al final):
 
 - Docker, MySQL, despliegue, CI/CD.
 - Frontend o app móvil real: el Adapter se prueba con un lector simulado.
 - Login, roles, microservicios, colas, mensajería.
-- OpenAPI/Swagger y Postman: alcanza con un archivo `.http`.
+- OpenAPI/Swagger: no se usa. La API se prueba con la colección de Postman
+  versionada en `docs/http/`.
 
 ---
 
@@ -62,10 +63,10 @@ que cada uno pueda trabajar y probar su parte sin esperar al resto.
 |---|---|---|---|
 | **S0 — Contratos** | 2–3 días | Interfaces, DTOs y excepciones congelados | `main` compila con los contratos |
 | **S1 — Patrones base** | 1 semana | Cada módulo con su caso feliz y un test | `mvnw test` verde por módulo |
-| **S2 — Integración** | 1 semana | Todo cableado y funcionando en H2 | Los 8 escenarios de la demo pasan |
-| **S3 — Cierre** | 2–3 días | Informe, diagramas y ensayo | Tag `v1.0` y demo ensayada |
+| **S2 — Integración** | 1 semana | Todo cableado y funcionando en H2 | Los 8 escenarios de la presentación pasan |
+| **S3 — Cierre** | 2–3 días | Informe, diagramas y ensayo | Tag `v1.0` y presentación ensayada |
 
-Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min.
+Reunión corta los lunes (30 min) y merge a `main` los viernes con presentación de 5 min.
 
 ---
 
@@ -102,7 +103,7 @@ Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min
 | A5 | A | Wiring de beans e integración en H2 | La API funciona end-to-end |
 | B3 | B | `ValidacionEmbalaje`, `ValidacionFIFO`, `AlertaStockBajo` | Embalaje dañado y despacho no FIFO rechazan |
 | C3 | C | Observadores y `ServicioConsultas` | Una transición notifica a los dos observadores |
-| D3 | D | Datos de demo y ajustes de mapeo | La base persiste y se reinicia sin errores |
+| D3 | D | Datos de presentación y ajustes de mapeo | La base persiste y se reinicia sin errores |
 | E3 | E | Adapter de lectores | Los tres lectores devuelven el mismo tipo |
 | E4 | E | `FachadaEscaneo`: única puerta de entrada | Delega en el gestor y devuelve el DTO |
 
@@ -112,7 +113,7 @@ Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min
 |---|---|---|
 | A6 | A | Integración final, diagramas y sección de arquitectura |
 | B4 | B | Tests de combinación de decoradores + sección del informe |
-| C4 | C | Sección de Strategy/Observer + guion de demo de reservas |
+| C4 | C | Sección de Strategy/Observer + guion de presentación de reservas |
 | D4 | D | Diagrama entidad-relación + sección de persistencia |
 | E5 | E | Suite e2e de los 8 escenarios + README de la API |
 
@@ -150,7 +151,7 @@ y se coordina.
 
 ---
 
-## 6. Escenarios de la demo
+## 6. Escenarios de la presentación
 
 Son el criterio de “el TP funciona”.
 
@@ -183,8 +184,8 @@ Son el criterio de “el TP funciona”.
 |---|---|
 | A se vuelve cuello de botella | Contratos cerrados en S0 antes de que el resto arranque |
 | Cambios de interfaz a mitad de sprint | PR `contrato/*` + revisión de A y del dueño afectado |
-| Integración tardía | Merge semanal + demo de 5 min todos los viernes |
-| Alguien no sabe explicar su parte en el oral | Cada dueño documenta y expone su patrón en la demo |
+| Integración tardía | Merge semanal + presentación de 5 min todos los viernes |
+| Alguien no sabe explicar su parte en el oral | Cada dueño documenta y expone su patrón en la presentación |
 | El alcance se infla | Todo lo que no esté en la sección 1 va al backlog |
 
 ---

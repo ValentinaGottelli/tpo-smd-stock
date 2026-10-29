@@ -44,6 +44,22 @@ public final class Lote extends ItemInventarioBase {
     }
 
     /**
+     * Reconstruye un lote que ya estaba persistido.
+     *
+     * <p>No aplica las validaciones de {@link #agregar(ItemInventario)} porque
+     * un lote despachado tiene hijos despachados y debe poder leerse desde la
+     * base sin errores.</p>
+     */
+    public static Lote reconstruir(String codigo,
+                                   EstadoProducto estado,
+                                   LocalDate fechaProduccion,
+                                   List<ItemInventario> hijos) {
+        Lote lote = new Lote(codigo, estado, fechaProduccion);
+        lote.items.addAll(Objects.requireNonNull(hijos, "Los hijos son obligatorios"));
+        return lote;
+    }
+
+    /**
      * @return copia inmutable de los hijos, para no exponer la lista interna
      */
     public List<ItemInventario> getItems() {

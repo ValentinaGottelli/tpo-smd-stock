@@ -1,0 +1,647 @@
+{
+  "info": {
+    "_postman_id": "a7d4e2c1-9b3f-4c8d-8e6a-2f1b0c9d7e5a",
+    "name": "TPO SMD - API de Inventario",
+    "description": "API REST del sistema de control de stock de SMD Colchon Modular.\n\nUsa el perfil dev (H2 en memoria). Los datos de ejemplo se cargan al arrancar y las altas de esta coleccion quedan en la base hasta que se detiene la aplicacion.\n\nOrden recomendado:\n00. Preparar corrida (genera codigos unicos)\n01. Health\n02-06. Alta y ciclo de vida de un colchon (State)\n07-11. Alta, ciclo y consulta de un lote de 5 (Composite)\n12. Inventario filtrado por estado\n13. Auditoria de movimientos\n14-15. Casos de error 404 y 400\n\nLa URL base se configura en la variable baseUrl (por defecto http://localhost:8080).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 - Preparar corrida",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        },
+        "description": "Genera codigos unicos para esta corrida y verifica que la aplicacion este arriba."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const sufijo = Date.now().toString().slice(-6);",
+              "pm.collectionVariables.set(\"codigoColchon\", \"COLCHON-QR-\" + sufijo);",
+              "pm.collectionVariables.set(\"codigoLote\", \"LOTE-QR-\" + sufijo);"
+            ],
+            "type": "text/javascript"
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"aplicacion operativa\", function () {",
+              "  pm.expect(pm.response.json().estado).to.eql(\"OK\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 - Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        },
+        "description": "Estado de la aplicacion, perfil activo, base de datos e items raiz registrados."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"base H2 en memoria\", function () {",
+              "  pm.expect(pm.response.json().baseDeDatos).to.eql(\"H2 (memoria)\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Alta de colchon",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoColchon}}\",\n  \"estado\": \"PRODUCIDO\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/inventario/colchones",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventario", "colchones"]
+        },
+        "description": "Da de alta un colchon suelto. El estado es opcional (por defecto PRODUCIDO)."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"201 Created\", function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"tipo COLCHON y cantidad 1\", function () {",
+              "  const item = pm.response.json();",
+              "  pm.expect(item.tipo).to.eql(\"COLCHON\");",
+              "  pm.expect(item.cantidad).to.eql(1);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Ingreso del colchon (State)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoColchon}}\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/ingreso",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "ingreso"]
+        },
+        "description": "PRODUCIDO -> EN_DEPOSITO. Requiere el alta del request 02."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"PRODUCIDO -> EN_DEPOSITO\", function () {",
+              "  const r = pm.response.json();",
+              "  pm.expect(r.estadoAnterior).to.eql(\"PRODUCIDO\");",
+              "  pm.expect(r.estadoNuevo).to.eql(\"EN_DEPOSITO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Reserva del colchon (State)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoColchon}}\",\n  \"canal\": \"DREAMO_LOCAL\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/reserva",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "reserva"]
+        },
+        "description": "EN_DEPOSITO -> RESERVADO. Requiere el request 03."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"EN_DEPOSITO -> RESERVADO\", function () {",
+              "  pm.expect(pm.response.json().estadoNuevo).to.eql(\"RESERVADO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Despacho del colchon (State)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoColchon}}\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/despacho",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "despacho"]
+        },
+        "description": "RESERVADO -> DESPACHADO (estado final). Requiere el request 04."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"RESERVADO -> DESPACHADO\", function () {",
+              "  pm.expect(pm.response.json().estadoNuevo).to.eql(\"DESPACHADO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Reserva invalida (409)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoColchon}}\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/reserva",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "reserva"]
+        },
+        "description": "El colchon ya esta DESPACHADO. State rechaza la transicion y el controller responde 409."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"409 Conflict\", function () {",
+              "  pm.response.to.have.status(409);",
+              "});",
+              "pm.test(\"codigo TRANSICION_INVALIDA\", function () {",
+              "  pm.expect(pm.response.json().codigo).to.eql(\"TRANSICION_INVALIDA\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Alta de lote de 5 (Composite)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoLote}}\",\n  \"estado\": \"PRODUCIDO\",\n  \"cantidad\": 5\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/inventario/lotes",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventario", "lotes"]
+        },
+        "description": "Da de alta un lote y genera sus 5 colchones hijos. La cantidad por defecto es 5."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"201 Created\", function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "pm.test(\"lote de 5 con 5 hijos\", function () {",
+              "  const lote = pm.response.json();",
+              "  pm.expect(lote.tipo).to.eql(\"LOTE\");",
+              "  pm.expect(lote.cantidad).to.eql(5);",
+              "  pm.expect(lote.hijos).to.have.lengthOf(5);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Ingreso del lote (cascada)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoLote}}\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/ingreso",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "ingreso"]
+        },
+        "description": "Un solo request cambia el lote y sus 5 hijos de PRODUCIDO a EN_DEPOSITO."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"lote en EN_DEPOSITO con 5 unidades\", function () {",
+              "  const r = pm.response.json();",
+              "  pm.expect(r.estadoNuevo).to.eql(\"EN_DEPOSITO\");",
+              "  pm.expect(r.cantidad).to.eql(5);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Reserva del lote (cascada)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoLote}}\",\n  \"canal\": \"RUBIN\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/reserva",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "reserva"]
+        },
+        "description": "EN_DEPOSITO -> RESERVADO para el lote y sus 5 hijos."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"RESERVADO\", function () {",
+              "  pm.expect(pm.response.json().estadoNuevo).to.eql(\"RESERVADO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Despacho del lote (cascada)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"{{codigoLote}}\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/despacho",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "despacho"]
+        },
+        "description": "RESERVADO -> DESPACHADO para el lote y sus 5 hijos."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"DESPACHADO con 5 unidades\", function () {",
+              "  const r = pm.response.json();",
+              "  pm.expect(r.estadoNuevo).to.eql(\"DESPACHADO\");",
+              "  pm.expect(r.cantidad).to.eql(5);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Consultar el lote y sus hijos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/inventario/{{codigoLote}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventario", "{{codigoLote}}"]
+        },
+        "description": "Devuelve el arbol del lote. Todos los hijos deben estar DESPACHADO."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"5 hijos despachados\", function () {",
+              "  const lote = pm.response.json();",
+              "  pm.expect(lote.estado).to.eql(\"DESPACHADO\");",
+              "  pm.expect(lote.hijos).to.have.lengthOf(5);",
+              "  lote.hijos.forEach(h => pm.expect(h.estado).to.eql(\"DESPACHADO\"));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Inventario filtrado por estado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/inventario?estado=DESPACHADO",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "inventario"],
+          "query": [
+            {
+              "key": "estado",
+              "value": "DESPACHADO"
+            }
+          ]
+        },
+        "description": "Lista solo los items raiz en el estado indicado. Los hijos se incluyen dentro de su lote."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"incluye el colchon y el lote despachados\", function () {",
+              "  const items = pm.response.json();",
+              "  pm.expect(items.map(i => i.codigo)).to.include(pm.collectionVariables.get(\"codigoColchon\"));",
+              "  pm.expect(items.map(i => i.codigo)).to.include(pm.collectionVariables.get(\"codigoLote\"));",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Auditoria de movimientos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/auditoria?limite=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auditoria"],
+          "query": [
+            {
+              "key": "limite",
+              "value": "10"
+            }
+          ]
+        },
+        "description": "Ultimos movimientos, del mas reciente al mas antiguo. La corrida completa genera 6."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"200 OK\", function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test(\"6 movimientos y el ultimo es DESPACHO\", function () {",
+              "  const movimientos = pm.response.json();",
+              "  pm.expect(movimientos).to.have.lengthOf(6);",
+              "  pm.expect(movimientos[0].tipo).to.eql(\"DESPACHO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Item inexistente (404)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"codigo\": \"NO-EXISTE\",\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/reserva",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "reserva"]
+        },
+        "description": "Codigo que no esta en el inventario. Devuelve 404 con RECURSO_NO_ENCONTRADO."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"404 Not Found\", function () {",
+              "  pm.response.to.have.status(404);",
+              "});",
+              "pm.test(\"codigo RECURSO_NO_ENCONTRADO\", function () {",
+              "  pm.expect(pm.response.json().codigo).to.eql(\"RECURSO_NO_ENCONTRADO\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 - Body invalido (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"usuario\": \"operario01\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/escaneos/ingreso",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "escaneos", "ingreso"]
+        },
+        "description": "Falta el codigo. Bean Validation devuelve 400 con SOLICITUD_INVALIDA."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"400 Bad Request\", function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "pm.test(\"codigo SOLICITUD_INVALIDA\", function () {",
+              "  pm.expect(pm.response.json().codigo).to.eql(\"SOLICITUD_INVALIDA\");",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "codigoColchon",
+      "value": "COLCHON-QR-1001",
+      "type": "string"
+    },
+    {
+      "key": "codigoLote",
+      "value": "LOTE-QR-1001",
+      "type": "string"
+    }
+  ]
+}

@@ -4,13 +4,13 @@ TPO de **Proceso de Desarrollo de Software** — sistema de control de stock con
 escaneo de códigos QR para **SMD Colchón Modular S.A.**
 
 Es una **simulación académica**: no se despliega, no hay usuarios reales y el
-objetivo es demostrar **diseño orientado a objetos con patrones**. Por eso el
-proyecto es un monolito Spring Boot chico, con una sola base **H2** y sin
-infraestructura extra.
+objetivo es mostrar **diseño orientado a objetos con patrones**. Por eso el
+proyecto es un monolito Spring Boot chico, con una sola base **H2**, sin
+frontend y sin infraestructura extra.
 
-Esta entrega deja el **esqueleto funcionando**: proyecto que arranca, base
-relacional conectada y un paquete por cada patrón. La lógica de negocio se
-implementa en los sprints siguientes (ver `docs/PLAN-TRABAJO.md`).
+La entrega tiene el **núcleo del dominio y la API REST funcionando de punta a
+punta**: se da de alta un colchón o un lote, se recorre su ciclo de vida por
+HTTP, se consulta el inventario y queda la auditoría de cada movimiento.
 
 ---
 
@@ -25,7 +25,7 @@ implementa en los sprints siguientes (ver `docs/PLAN-TRABAJO.md`).
 | Base de datos | **H2** en memoria (`dev`) o en archivo (`devfile`) |
 | API | Spring Web (REST) + Bean Validation |
 
-No se usa Docker, MySQL, Lombok ni servicios externos.
+No se usa Docker, MySQL, OpenAPI, frontend, Lombok ni servicios externos.
 
 ---
 
@@ -41,8 +41,9 @@ No se usa Docker, MySQL, Lombok ni servicios externos.
 ./mvnw spring-boot:run
 ```
 
-Arranca en <http://localhost:8080> con el perfil `dev` (H2 en memoria) y tres
-ítems de ejemplo.
+Arranca en <http://localhost:8080> con el perfil `dev` (H2 en memoria). La base
+se inicializa en cada arranque con 2 colchones sueltos y 1 lote de 5 colchones
+(8 filas, 3 ítems raíz).
 
 ```bash
 curl http://localhost:8080/api/health
@@ -71,29 +72,172 @@ $env:SPRING_PROFILES_ACTIVE = "devfile"
 .\mvnw.cmd spring-boot:run
 ```
 
-El seeder carga los datos de ejemplo **solo si la base está vacía**. Para
+El seeder carga los datos iniciales **solo si la base está vacía**. Para
 empezar de cero, detener la app y borrar `data/`.
 
 ---
 
-## Para la demo de mañana
+## API REST
 
-La guía paso a paso para explicar **sin ejecutar nada** está en
-[`DEMO.md`](DEMO.md): qué archivo abrir, qué decir y qué preguntas pueden
-aparecer.
+Todas las rutas devuelven JSON. La URL base local es
+`http://localhost:8080/api`.
 
-Lo que se muestra es el núcleo del dominio:
+| Método | Ruta | Body | Respuesta |
+|---|---|---|---|
+| `GET` | `/health` | — | `HealthResponse` |
+| `POST` | `/escaneos/ingreso` | `EscaneoRequest` | `RespuestaEscaneoDTO` |
+| `POST` | `/escaneos/reserva` | `EscaneoRequest` | `RespuestaEscaneoDTO` |
+| `POST` | `/escaneos/cancelacion` | `EscaneoRequest` | `RespuestaEscaneoDTO` |
+| `POST` | `/escaneos/despacho` | `EscaneoRequest` | `RespuestaEscaneoDTO` |
+| `GET` | `/inventario?estado=` | — | `List<ItemInventarioResponse>` |
+| `GET` | `/inventario/{codigo}` | — | `ItemInventarioResponse` |
+| `POST` | `/inventario/colchones` | `RegistrarColchonRequest` | `ItemInventarioResponse` (201) |
+| `POST` | `/inventario/lotes` | `RegistrarLoteRequest` | `ItemInventarioResponse` (201) |
+| `GET` | `/auditoria?limite=50` | — | `List<MovimientoResponse>` |
 
-- **State**: `domain/state` (4 estados + matriz de transiciones)
-- **Composite**: `domain/composite` (`Colchon` y `Lote`)
-- **Tests**: `StateTest` (16 combinaciones) y `CompositeTest`
+### Cuerpos de request
 
-Si te piden ejecutar algo: `.\mvnw.cmd test`.
+```json
+// EscaneoRequest — usuario y canal son opcionales
+{
+  "codigo": "COLCHON-QR-0001",
+  "canal": "DREAMO_LOCAL",
+  "usuario": "operario01",
+  "embalajeOk": true
+}
+```
 
-Para mostrarlo por HTTP hay una colección de Postman en
-`docs/http/demo-state-composite.postman_collection.json` y un controller de
-demo en `presentation/demo`. Es **descartable**: guarda en memoria y no es la
-API definitiva.
+```json
+// RegistrarColchonRequest — estado y fecha son opcionales
+{
+  "codigo": "COLCHON-QR-9001",
+  "estado": "PRODUCIDO",
+  "fechaProduccion": "2026-10-01"
+}
+```
+
+```json
+// RegistrarLoteRequest — cantidad por defecto 5
+{
+  "codigo": "LOTE-QR-9001",
+  "estado": "PRODUCIDO",
+  "fechaProduccion": "2026-10-01",
+  "cantidad": 5
+}
+```
+
+- Si se omite `usuario`, la fachada usa `app.escaneo.usuario-default`
+  (`operario01`).
+- Si se omite `estado` en un alta, arranca en `PRODUCIDO`.
+- Un alta solo admite `PRODUCIDO` o `EN_DEPOSITO`; cualquier otro estado
+  devuelve `409`.
+
+### Flujo completo
+
+1. `POST /api/inventario/colchones` → crea el colchón en `PRODUCIDO`.
+2. `POST /api/escaneos/ingreso` → `PRODUCIDO` a `EN_DEPOSITO`.
+3. `POST /api/escaneos/reserva` → `EN_DEPOSITO` a `RESERVADO`.
+4. `POST /api/escaneos/despacho` → `RESERVADO` a `DESPACHADO`.
+5. `GET /api/inventario/{codigo}` → confirma el estado final.
+6. `GET /api/auditoria` → muestra los tres movimientos.
+
+Un lote sigue el mismo flujo con un solo escaneo: el patrón **Composite**
+propaga el cambio de estado a sus 5 colchones hijos.
+
+### Respuestas
+
+```json
+// RespuestaEscaneoDTO
+{
+  "codigo": "COLCHON-QR-9001",
+  "estadoAnterior": "EN_DEPOSITO",
+  "estadoNuevo": "RESERVADO",
+  "cantidad": 1,
+  "mensaje": "Reserva registrada para COLCHON-QR-9001",
+  "fechaHora": "2026-10-28T10:20:00"
+}
+```
+
+```json
+// ItemInventarioResponse — los lotes incluyen el árbol de hijos
+{
+  "codigo": "LOTE-QR-9001",
+  "tipo": "LOTE",
+  "estado": "EN_DEPOSITO",
+  "cantidad": 5,
+  "fechaProduccion": "2026-10-01",
+  "hijos": [
+    { "codigo": "LOTE-QR-9001-01", "tipo": "COLCHON", "estado": "EN_DEPOSITO", "cantidad": 1, "hijos": [] }
+  ]
+}
+```
+
+### Errores
+
+| Situación | HTTP | `codigo` |
+|---|---|---|
+| Transición inválida de State | `409` | `TRANSICION_INVALIDA` |
+| Regla de negocio (código duplicado, estado inicial inválido) | `409` | `REGLA_DE_NEGOCIO` |
+| Código inexistente | `404` | `RECURSO_NO_ENCONTRADO` |
+| Body inválido o parámetro con formato incorrecto | `400` | `SOLICITUD_INVALIDA` |
+
+```json
+{
+  "codigo": "TRANSICION_INVALIDA",
+  "mensaje": "No se puede reservar el item COLCHON-QR-0001 porque esta en estado DESPACHADO",
+  "fechaHora": "2026-10-28T10:25:00",
+  "path": "/api/escaneos/reserva"
+}
+```
+
+La traducción a HTTP está centralizada en
+`presentation/exception/ManejadorGlobalDeErrores`.
+
+### Postman
+
+La colección está en
+[`docs/http/inventario.postman_collection.json`](docs/http/inventario.postman_collection.json).
+Tiene 16 requests numerados: preparación, health, alta y ciclo de un colchón,
+alta y ciclo de un lote, consultas, auditoría y dos casos de error. El request
+`00` genera códigos únicos para que se pueda correr varias veces.
+
+1. Postman → **Import** → elegir el `.json`.
+2. Verificar `baseUrl` (por defecto `http://localhost:8080`).
+3. Ejecutar en orden o usar **Run collection**.
+
+---
+
+## Arquitectura
+
+El dominio es **Java puro**: no tiene anotaciones de Spring, no depende de HTTP
+y se prueba con JUnit sin levantar el framework. Las dependencias apuntan hacia
+adentro: la infraestructura conoce al dominio, nunca al revés.
+
+```
+presentation (controllers, DTOs HTTP, manejo de errores)
+        |
+        v
+domain.facade (FachadaEscaneo)  <-- única puerta de entrada
+        |
+        v
+domain.service (GestorDeStock, ServicioConsultas)
+        |
+        v
+domain.port (RepositorioItems, RepositorioMovimientos)
+        ^
+        |  implementados por
+persistence (JPA: adaptadores, entidades, mappers)
+```
+
+- Los **controllers** solo validan el body y delegan en la fachada o en los
+  servicios.
+- `GestorDeStock` ejecuta la transición con State, guarda el ítem y registra el
+  movimiento.
+- `ServicioConsultas` concentra las lecturas.
+- Los **puertos** son interfaces del dominio; los adaptadores JPA están en
+  `persistence` y traducen con los mappers.
+- `config/DomainConfig` construye los servicios puros como beans únicos
+  (Singleton) sin ensuciar el dominio con `@Service`.
 
 ---
 
@@ -101,7 +245,7 @@ API definitiva.
 
 ```
 Entrega3/
-├── DEMO.md                            # guía para mostrar en clase
+├── GUIA.md                            # guía para explicar el código en clase
 ├── pom.xml
 ├── mvnw / mvnw.cmd / .mvn/            # Maven Wrapper
 ├── docs/
@@ -110,31 +254,34 @@ Entrega3/
 │   └── http/                          # colección de Postman
 ├── src/main/java/com/smd/inventario/
 │   ├── InventarioApplication.java
-│   ├── config/                        # seeder de datos de ejemplo
+│   ├── config/
+│   │   ├── DomainConfig.java          # cablea los servicios del dominio
+│   │   └── DevFileDataSeeder.java     # datos iniciales para devfile
 │   ├── domain/
 │   │   ├── model/                     # ItemInventario, base, Movimiento, enums
+│   │   ├── dto/                       # EscaneoDTO, RespuestaEscaneoDTO
 │   │   ├── state/                     # State: los 4 estados
 │   │   ├── composite/                 # Composite: Colchon y Lote
+│   │   ├── service/                   # GestorDeStock, ServicioConsultas
+│   │   ├── facade/                    # FachadaEscaneo + implementación
+│   │   ├── port/                      # puertos de persistencia
 │   │   └── exception/                 # errores de negocio
 │   ├── persistence/
-│   │   ├── entity/                    # entidad JPA
-│   │   └── repository/                # Spring Data
+│   │   ├── entity/                    # entidades JPA
+│   │   ├── mapper/                    # entidad <-> dominio
+│   │   └── repository/                # Spring Data + adaptadores de puertos
 │   └── presentation/
-│       ├── controller/                # health
-│       ├── demo/                      # controller en memoria (State + Composite)
-│       └── dto/                       # respuesta del health
+│       ├── controller/                # health, escaneos, inventario, auditoría
+│       ├── dto/                       # requests, responses y error
+│       └── exception/                 # @RestControllerAdvice
 ├── src/main/resources/
 │   ├── application.properties
 │   ├── application-dev.properties     # H2 memoria
 │   ├── application-devfile.properties # H2 archivo
-│   └── data.sql                       # datos de ejemplo (dev)
+│   └── data.sql                       # datos iniciales (dev)
 ├── data/                              # base H2 (generada, no se versiona)
-└── src/test/java/...                  # tests de State, Composite y demo HTTP
+└── src/test/java/...                  # State, Composite y API HTTP
 ```
-
-> Las carpetas de los patrones que faltan (`decorator`, `strategy`, `observer`,
-> `facade`, etc.) se crean en los próximos sprints. No están vacías en el repo
-> para no agregar ruido.
 
 ---
 
@@ -142,21 +289,44 @@ Entrega3/
 
 | Patrón | Paquete | Dueño | Estado |
 |---|---|---|---|
-| **State** | `domain/state` | A | **Implementado** |
-| **Composite** | `domain/composite` | A | **Implementado** |
-| Singleton | `domain/service` | A | Pendiente |
-| Facade | `domain/facade` | E | Pendiente |
+| **State** | `domain/state` | A | Implementado |
+| **Composite** | `domain/composite` | A | Implementado |
+| **Singleton** | `domain/service` + `config/DomainConfig` | A | Implementado (beans únicos) |
+| **Facade** | `domain/facade` | E | Implementado |
+| **Adapter** | `persistence/repository` | E | Implementado (puertos a JPA) |
+| **Repository** | `persistence/repository` | D | Implementado (Spring Data + puerto) |
+| **Mapper** | `persistence/mapper` | D | Implementado |
 | Decorator, Factory | `domain/decorator`, `domain/factory` | B | Pendiente |
 | Strategy, Observer | `domain/strategy`, `domain/observer` | C | Pendiente |
-| Repository / JPA | `persistence/**` | D | Base creada |
-| Adapter | `presentation/adapter` | E | Pendiente |
+
+> El contrato de los patrones pendientes ya está acordado en
+> `docs/equipo/CONTRATOS.md`. No se crean paquetes vacíos para no agregar
+> ruido al repositorio.
+
+---
+
+## Tests
+
+```powershell
+.\mvnw.cmd clean test
+```
+
+| Test | Qué cubre | Casos |
+|---|---|---|
+| `StateTest` | Las 16 combinaciones de estado y operación | 16 |
+| `CompositeTest` | Cantidad, cascada y validaciones del lote | 5 |
+| `InventarioApplicationTests` | Contexto y health | 2 |
+| `ApiInventarioTest` | Alta, ciclo, lote, auditoría, 404, 400 y 409 | 8 |
+
+**31 tests, 0 fallas.** Los tests de dominio no levantan Spring; los de API usan
+`MockMvc` y una base H2 de test independiente (`application-test.properties`).
 
 ---
 
 ## Documentación del grupo
 
-- `DEMO.md` — guía para mostrar State + Composite en clase
-- `docs/http/demo-state-composite.postman_collection.json` — colección para probarlo por HTTP
+- [`GUIA.md`](GUIA.md) — recorrido archivo por archivo para explicar en clase
+- [`docs/http/inventario.postman_collection.json`](docs/http/inventario.postman_collection.json) — colección de Postman
 - `docs/PLAN-TRABAJO.md` — reparto, sprints y reglas de trabajo
 - `docs/equipo/CONTRATOS.md` — interfaces acordadas (**leer antes de codificar**)
 - `docs/equipo/ROL-*.md` — plan individual de cada integrante

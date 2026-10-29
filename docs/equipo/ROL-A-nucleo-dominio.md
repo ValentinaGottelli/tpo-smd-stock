@@ -90,7 +90,7 @@ falla la persistencia.
 
 - Cablear los beans que falten sin invadir paquetes de B, C, D ni la fachada de E.
 - Verificar que el gestor reciba repositorios, estrategia, fábrica y observadores.
-- Correr los 8 escenarios de la demo en H2 y anotar qué falla para repartir.
+- Correr los 8 escenarios de la presentación en H2 y anotar qué falla para repartir.
 
 **Criterio:** la app levanta con `dev` y los 8 escenarios pasan.
 
@@ -98,7 +98,7 @@ falla la persistencia.
 
 - Diagrama de clases y diagrama de secuencia del escaneo.
 - Sección de arquitectura y de State/Composite/Singleton para el informe.
-- Guion técnico de la demo y tag `v1.0`.
+- Guion técnico de la presentación y tag `v1.0`.
 
 ---
 
@@ -125,4 +125,4 @@ falla la persistencia.
 - [ ] `GestorDeStock` con los 7 tests de flujo.
 - [ ] Wiring completo y 8 escenarios funcionando en H2.
 - [ ] Diagramas y secciones del informe.
-- [ ] Demo ensayada y tag `v1.0`.
+- [ ] Presentación ensayada y tag `v1.0`.

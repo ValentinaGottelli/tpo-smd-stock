@@ -17,12 +17,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * Representación persistente de un ítem de inventario (colchón o lote).
+ * Representación persistente de un ítem de inventario.
  *
- * <p>Es la única entidad del esqueleto inicial y sirve para verificar que la
- * conexión con la base de datos relacional funciona de punta a punta.
- * El modelo de dominio rico (Colchon, Lote, Movimiento) se implementa en la
- * capa {@code domain} y se mapea contra esta tabla mediante un mapper.</p>
+ * <p>Un colchón suelto tiene {@code codigoPadre = null}. Los colchones que
+ * componen un lote guardan el código del lote en esa columna. Así el patrón
+ * Composite se reconstruye desde la base sin relaciones JPA recursivas.</p>
  */
 @Entity
 @Table(
@@ -61,6 +60,10 @@ public class ItemInventarioEntity {
     @Column(name = "fecha_alta", nullable = false)
     private LocalDateTime fechaAlta;
 
+    /** Código del lote al que pertenece el colchón; {@code null} si es raíz. */
+    @Column(name = "codigo_padre", length = 64)
+    private String codigoPadre;
+
     /** Control de concurrencia optimista. */
     @Version
     @Column(name = "version_registro", nullable = false)
@@ -75,12 +78,40 @@ public class ItemInventarioEntity {
                                 EstadoProducto estado,
                                 Integer cantidad,
                                 LocalDate fechaProduccion) {
+        this(codigo, tipo, estado, cantidad, fechaProduccion, null);
+    }
+
+    public ItemInventarioEntity(String codigo,
+                                TipoItem tipo,
+                                EstadoProducto estado,
+                                Integer cantidad,
+                                LocalDate fechaProduccion,
+                                String codigoPadre) {
         this.codigo = codigo;
         this.tipo = tipo;
         this.estado = estado;
         this.cantidad = cantidad;
         this.fechaProduccion = fechaProduccion;
+        this.codigoPadre = codigoPadre;
         this.fechaAlta = LocalDateTime.now();
+    }
+
+    /**
+     * Actualiza los datos que cambian durante la operación de stock.
+     *
+     * <p>No expone setters públicos: el código y el tipo son inmutables y el
+     * estado solo debe cambiar a través de las transiciones del dominio.</p>
+     */
+    public void actualizar(EstadoProducto estado,
+                           Integer cantidad,
+                           LocalDate fechaProduccion,
+                           String codigoPadre) {
+        this.estado = estado;
+        this.cantidad = cantidad;
+        this.fechaProduccion = fechaProduccion;
+        if (codigoPadre != null) {
+            this.codigoPadre = codigoPadre;
+        }
     }
 
     public Long getId() {
@@ -109,6 +140,10 @@ public class ItemInventarioEntity {
 
     public LocalDateTime getFechaAlta() {
         return fechaAlta;
+    }
+
+    public String getCodigoPadre() {
+        return codigoPadre;
     }
 
     public Long getVersion() {
