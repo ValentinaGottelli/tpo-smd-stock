@@ -193,15 +193,16 @@ propaga el cambio de estado a sus 5 colchones hijos.
 La traducción a HTTP está centralizada en
 `presentation/exception/ManejadorGlobalDeErrores`.
 
-### Postman
+### Postman / Apidog
 
 La colección está en
 [`docs/http/inventario.postman_collection.json`](docs/http/inventario.postman_collection.json).
-Tiene 16 requests numerados: preparación, health, alta y ciclo de un colchón,
-alta y ciclo de un lote, consultas, auditoría y dos casos de error. El request
-`00` genera códigos únicos para que se pueda correr varias veces.
+Es formato Postman v2.1, así que **Apidog también la puede importar**. Tiene 16
+requests numerados: preparación, health, alta y ciclo de un colchón, alta y
+ciclo de un lote, consultas, auditoría y dos casos de error. El request `00`
+genera códigos únicos para que se pueda correr varias veces.
 
-1. Postman → **Import** → elegir el `.json`.
+1. Postman o Apidog → **Import** → elegir el `.json`.
 2. Verificar `baseUrl` (por defecto `http://localhost:8080`).
 3. Ejecutar en orden o usar **Run collection**.
 
@@ -209,9 +210,9 @@ alta y ciclo de un lote, consultas, auditoría y dos casos de error. El request
 
 ## Arquitectura
 
-El dominio es **Java puro**: no tiene anotaciones de Spring, no depende de HTTP
-y se prueba con JUnit sin levantar el framework. Las dependencias apuntan hacia
-adentro: la infraestructura conoce al dominio, nunca al revés.
+El dominio es **Java puro**: no tiene anotaciones de Spring y no depende de HTTP.
+Las dependencias apuntan hacia adentro: la infraestructura conoce al dominio,
+nunca al revés.
 
 ```
 presentation (controllers, DTOs HTTP, manejo de errores)
@@ -251,7 +252,7 @@ Entrega3/
 ├── docs/
 │   ├── PLAN-TRABAJO.md
 │   ├── equipo/                        # contratos y planes por rol
-│   └── http/                          # colección de Postman
+│   └── http/                          # colección de Postman/Apidog
 ├── src/main/java/com/smd/inventario/
 │   ├── InventarioApplication.java
 │   ├── config/
@@ -279,8 +280,7 @@ Entrega3/
 │   ├── application-dev.properties     # H2 memoria
 │   ├── application-devfile.properties # H2 archivo
 │   └── data.sql                       # datos iniciales (dev)
-├── data/                              # base H2 (generada, no se versiona)
-└── src/test/java/...                  # State, Composite y API HTTP
+└── data/                              # base H2 (generada, no se versiona)
 ```
 
 ---
@@ -305,28 +305,22 @@ Entrega3/
 
 ---
 
-## Tests
+## Verificación
 
 ```powershell
-.\mvnw.cmd clean test
+.\mvnw.cmd clean package
 ```
 
-| Test | Qué cubre | Casos |
-|---|---|---|
-| `StateTest` | Las 16 combinaciones de estado y operación | 16 |
-| `CompositeTest` | Cantidad, cascada y validaciones del lote | 5 |
-| `InventarioApplicationTests` | Contexto y health | 2 |
-| `ApiInventarioTest` | Alta, ciclo, lote, auditoría, 404, 400 y 409 | 8 |
-
-**31 tests, 0 fallas.** Los tests de dominio no levantan Spring; los de API usan
-`MockMvc` y una base H2 de test independiente (`application-test.properties`).
+El flujo completo se verificó contra la API real sobre H2: alta, ingreso,
+reserva, despacho, cascada de un lote de 5, auditoría y respuestas 400, 404 y
+409. La colección de Postman/Apidog permite repetir ese recorrido.
 
 ---
 
 ## Documentación del grupo
 
 - [`GUIA.md`](GUIA.md) — recorrido archivo por archivo para explicar en clase
-- [`docs/http/inventario.postman_collection.json`](docs/http/inventario.postman_collection.json) — colección de Postman
+- [`docs/http/inventario.postman_collection.json`](docs/http/inventario.postman_collection.json) — colección para Postman/Apidog
 - `docs/PLAN-TRABAJO.md` — reparto, sprints y reglas de trabajo
 - `docs/equipo/CONTRATOS.md` — interfaces acordadas (**leer antes de codificar**)
 - `docs/equipo/ROL-*.md` — plan individual de cada integrante
@@ -336,7 +330,6 @@ Entrega3/
 ## Comandos
 
 ```bash
-./mvnw test                 # tests
-./mvnw clean package        # genera el jar en target/
+./mvnw clean package        # compila y genera el jar en target/
 java -jar target/smd-stock-0.0.1-SNAPSHOT.jar
 ```

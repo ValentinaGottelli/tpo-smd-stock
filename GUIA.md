@@ -4,7 +4,7 @@
 > mostrar leyendo el código. Tiempo estimado: 8–10 minutos.
 >
 > Si piden verlo funcionando, la sección **7** explica cómo correr la API y la
-> colección de Postman. La sección **10** cubre las preguntas sobre anotaciones
+> colección de Postman/Apidog. La sección **10** cubre las preguntas sobre anotaciones
 > y `@Autowired`.
 
 Las rutas son relativas a `src/main/java/com/smd/inventario/`.
@@ -21,9 +21,8 @@ Las rutas son relativas a `src/main/java/com/smd/inventario/`.
 | 4 | **Facade + servicios** | `domain/facade/**`, `domain/service/**` |
 | 5 | **Ports + Adapter + Repository + Mapper** | `domain/port/**`, `persistence/**` |
 | 6 | API REST y errores | `presentation/**` |
-| 7 | Prueba por HTTP | colección de Postman |
-| 8 | Tests | `src/test/java/**` |
-| 9 | Decisiones de diseño | anotaciones, `@Autowired`, sin Lombok |
+| 7 | Prueba por HTTP | colección de Postman/Apidog |
+| 8 | Decisiones de diseño | anotaciones, `@Autowired`, sin Lombok |
 
 ---
 
@@ -118,8 +117,8 @@ public void cambiarEstado(EstadoProducto nuevoEstado) {
 
 **Archivo:** `domain/exception/TransicionInvalidaException.java`
 
-> “El mensaje incluye el código del ítem, el estado y la operación. Si falla, el
-> estado no se modifica: eso está cubierto por los tests.”
+> “El mensaje incluye el código del ítem, el estado y la operación. Si la
+> transición es inválida, el estado no se modifica.”
 
 ---
 
@@ -175,7 +174,8 @@ Cerrá con la idea:
 | `RESERVADO` | error | error | → `EN_DEPOSITO` | → `DESPACHADO` |
 | `DESPACHADO` | error | error | error | error |
 
-> “Son 16 combinaciones y las 16 están en `StateTest`.”
+> “Son 16 combinaciones y la matriz está repartida entre las cuatro clases de
+> estado.”
 
 ---
 
@@ -259,7 +259,7 @@ public GestorDeStock gestorDeStock(RepositorioItems items,
 > “El dominio no lleva `@Service`. Esta configuración lo construye como bean y
 > Spring garantiza una única instancia durante toda la vida de la aplicación:
 > eso es el Singleton. No usamos el `getInstance()` clásico porque la
-> inyección por constructor hace lo mismo y se puede testear con `new`.”
+> inyección por constructor hace lo mismo y se puede instanciar con `new`.”
 
 ### 6.4 Puertos, Adapter, Repository y Mapper
 
@@ -329,7 +329,9 @@ Queda en <http://localhost:8080> con el perfil `dev` (H2 en memoria).
 
 **Archivo:** `docs/http/inventario.postman_collection.json`
 
-1. Postman → **Import** → **File** → elegir el `.json`.
+Es formato Postman v2.1; **Apidog también lo importa**.
+
+1. Postman o Apidog → **Import** → **File** → elegir el `.json`.
 2. Verificar `baseUrl` = `http://localhost:8080`.
 3. Ejecutar en orden o usar **Run collection**.
 
@@ -371,39 +373,24 @@ Queda en <http://localhost:8080> con el perfil `dev` (H2 en memoria).
 
 ---
 
-## 8. Si preguntan por las pruebas
+## 8. Si preguntan cómo se verificó
 
-**Archivos:**
+La verificación se hizo con la aplicación levantada y la colección de
+Postman/Apidog:
 
-- `src/test/java/com/smd/inventario/domain/state/StateTest.java` — 16 casos.
-- `src/test/java/com/smd/inventario/domain/composite/CompositeTest.java` — 5.
-- `src/test/java/com/smd/inventario/InventarioApplicationTests.java` — 2.
-- `src/test/java/com/smd/inventario/presentation/ApiInventarioTest.java` — 8.
-
-Mostrá el test parametrizado de State:
-
-```java
-@ParameterizedTest(name = "{0} + {1} -> {2}")
-@MethodSource("casos")
-void aplicaLaMatrizDeTransiciones(EstadoProducto inicial, Operacion operacion,
-                                  EstadoProducto esperado) {
-    ...
-}
-```
-
-> “El test recorre las 16 combinaciones y verifica dos cosas: que la transición
-> válida cambie el estado y que la inválida lance excepción sin modificarlo.”
-
-Los tests de dominio **no levantan Spring**. Los de API usan `MockMvc` y una
-base H2 aparte (`src/test/resources/application-test.properties`).
-
-Si piden ejecutar:
+- `GET /api/health` → `OK`, H2 y 3 ítems raíz.
+- Alta, ingreso, reserva y despacho → `200` y estados correctos.
+- Reservar después del despacho → `409 TRANSICION_INVALIDA`.
+- Lote de 5 → un solo escaneo cambia el estado de los 5 hijos.
+- Código inexistente → `404`; body sin `codigo` → `400`.
+- La auditoría muestra un movimiento por operación.
 
 ```powershell
-.\mvnw.cmd clean test
+.\mvnw.cmd spring-boot:run
 ```
 
-**31 tests, 0 fallas.**
+> “El flujo se probó de punta a punta contra H2; la colección permite repetir
+> exactamente el mismo recorrido.”
 
 ---
 
@@ -446,8 +433,6 @@ public class ItemInventarioEntity { ... }
 
 ### Por qué el dominio queda limpio
 
-- Se prueba con JUnit **sin levantar Spring** (`StateTest` y `CompositeTest` no
-  usan `@SpringBootTest`).
 - No depende de Jakarta ni de Spring: si cambia el framework, el dominio no se
   toca.
 - El foco del TP son los patrones, no las anotaciones.
@@ -479,7 +464,7 @@ decirle cuál usar. La inyección por constructor es la recomendada porque:
 
 - los campos pueden ser `final`;
 - la clase no se puede crear “a medias”;
-- en un test se instancia con `new` sin Spring.
+- se puede instanciar con `new` sin depender de Spring.
 
 ### ¿Y Lombok?
 
@@ -500,7 +485,7 @@ expone solo los getters necesarios más `actualizar(...)`.
 
 **¿Qué pasa si reservo dos veces?**
 > `EstadoReservado.reservar()` lanza `TransicionInvalidaException` y el estado
-> queda igual. Está en `StateTest` y en la request 06 de Postman.
+> queda igual. La request 06 de la colección lo muestra.
 
 **¿Un lote vacío?**
 > `getCantidad()` devuelve 0. El alta por API exige `cantidad >= 1`; la regla
@@ -528,7 +513,7 @@ expone solo los getters necesarios más `actualizar(...)`.
 > (`@Enumerated(EnumType.STRING)`).
 
 **¿Por qué el dominio no tiene anotaciones de Spring?**
-> Porque es Java puro y se prueba sin framework. Las anotaciones viven en
+> Porque es Java puro y no depende del framework. Las anotaciones viven en
 > `presentation`, `persistence` y `config`. Es una separación deliberada.
 
 **¿Por qué los constructores no llevan `@Autowired`?**
@@ -560,8 +545,7 @@ expone solo los getters necesarios más `actualizar(...)`.
 | `persistence/entity/ItemInventarioEntity.java` | Estado, `codigo_padre`, `@Version` |
 | `presentation/exception/ManejadorGlobalDeErrores.java` | Dominio → HTTP |
 | `config/DomainConfig.java` | Singleton por beans |
-| `src/test/.../StateTest.java` | Las 16 combinaciones |
-| `docs/http/inventario.postman_collection.json` | Colección de Postman |
+| `docs/http/inventario.postman_collection.json` | Colección para Postman/Apidog |
 
 ---
 

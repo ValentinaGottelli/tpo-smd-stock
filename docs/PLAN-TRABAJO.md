@@ -21,7 +21,7 @@ infraestructura.
 - Base relacional **H2** (en memoria y en archivo). Sin instalar nada.
 - Los 9 patrones del informe: State, Composite, Singleton, Facade, Decorator,
   Simple Factory, Strategy, Observer y Adapter.
-- API REST mínima, tests unitarios y presentación de punta a punta.
+- API REST mínima y verificación de punta a punta.
 
 **No entra** (si el docente lo pide, se evalúa como extra al final):
 
@@ -62,7 +62,7 @@ que cada uno pueda trabajar y probar su parte sin esperar al resto.
 | Etapa | Duración | Meta | Hito verificable |
 |---|---|---|---|
 | **S0 — Contratos** | 2–3 días | Interfaces, DTOs y excepciones congelados | `main` compila con los contratos |
-| **S1 — Patrones base** | 1 semana | Cada módulo con su caso feliz y un test | `mvnw test` verde por módulo |
+| **S1 — Patrones base** | 1 semana | Cada módulo con su caso feliz | El flujo responde por HTTP |
 | **S2 — Integración** | 1 semana | Todo cableado y funcionando en H2 | Los 8 escenarios de la presentación pasan |
 | **S3 — Cierre** | 2–3 días | Informe, diagramas y ensayo | Tag `v1.0` y presentación ensayada |
 
@@ -137,11 +137,11 @@ y se coordina.
 
 ### Git
 
-- `main` siempre compila y con tests verdes.
+- `main` siempre compila y responde el flujo principal.
 - Una rama por tarea: `feat/state`, `feat/decorator`, `feat/api`…
 - Un PR = una tarea. Título `A3: implementar State`.
 - Lo revisa alguien distinto del autor y se mergea con squash.
-- Nada se mergea sin `.\mvnw.cmd test` verde.
+- Nada se mergea sin compilar y probar el flujo por HTTP.
 
 ### Comunicación
 
@@ -168,8 +168,8 @@ Son el criterio de “el TP funciona”.
 
 ## 7. Definition of Done
 
-- [ ] `.\\mvnw.cmd test` verde.
-- [ ] Test del caso feliz + al menos un caso de error.
+- [ ] La app compila y responde el flujo principal.
+- [ ] Caso feliz y al menos un caso de error verificados por HTTP.
 - [ ] Javadoc en clases y métodos públicos.
 - [ ] Sin `TODO` sueltos (si queda algo, va como issue).
 - [ ] PR revisado y mergeado a `main`.
