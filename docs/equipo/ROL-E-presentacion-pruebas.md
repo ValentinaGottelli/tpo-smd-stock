@@ -1,7 +1,7 @@
-# Rol E — API REST, adapter y pruebas
+# Rol E — API REST, fachada, adapter y pruebas
 
-**Carga:** ~16 % · **Patrones:** Adapter
-**Paquetes:** `presentation/controller`, `presentation/dto`,
+**Carga:** ~19 % · **Patrones:** Facade, Adapter
+**Paquetes:** `domain/facade`, `presentation/controller`, `presentation/dto`,
 `presentation/adapter`, `src/test/.../presentation`, `docs/http`
 
 ---
@@ -9,23 +9,22 @@
 ## Mensaje para el grupo
 
 > Me encargo de la cara visible del sistema: los endpoints REST, los DTOs de la
-> API, el manejo de errores, los adapters de lectores QR (cámara y pistola) y
-> las pruebas de punta a punta. También dejo el archivo `.http` y el README de
-> la API para la demo.
+> API, el manejo de errores, la fachada de escaneo que usan los controllers, los
+> adapters de lectores QR y las pruebas de punta a punta. También dejo el archivo
+> `.http` y el README de la API para la demo.
 
 ---
 
 ## Idea del módulo
 
-La app de escaneo no habla con el dominio directamente:
-
 ```
 LectorCodigo (Adapter) → arma EscaneoDTO
-    → FachadaEscaneo (Facade) → GestorDeStock → ...
+    → FachadaEscaneo (Facade, mía) → GestorDeStock → ...
 ```
 
-La capa REST expone ese flujo por HTTP y traduce excepciones de negocio a
-códigos claros.
+Tenés los dos patrones de borde: **Facade** simplifica el acceso al dominio para
+la capa REST y **Adapter** traduce APIs de lectores distintas a una sola
+interfaz. No inventan reglas de negocio: solo adaptan.
 
 ---
 
@@ -72,7 +71,7 @@ Respuesta uniforme:
 400; código inexistente → 404; transición inválida → 409; estructura del JSON de
 error.
 
-### E3 — Adapter y e2e (S2)
+### E3 — Adapter (S2)
 
 - `LectorCodigo` con `String leer()`.
 - `AdaptadorCamara` y `AdaptadorPistolaUSB` traducen dos APIs distintas
@@ -83,18 +82,29 @@ error.
 **Tests:** los tres lectores devuelven `String`; agregar un lector nuevo no
 obliga a tocar el resto; las clases simuladas de SDK no salen de los adapters.
 
-Después, `@SpringBootTest` con la app completa recorriendo los 8 escenarios del
-plan maestro en perfil `dev`.
+### E4 — FachadaEscaneo (S2)
 
-**Criterio:** suite e2e verde.
+Implementás `FachadaEscaneo` sobre la interfaz que congeló A:
 
-### E4 — Cierre (S3)
+- Los 4 métodos delegan en `GestorDeStock`.
+- **Sin reglas propias**: arma el `EscaneoDTO` (usuario por defecto si viene
+  vacío) y devuelve `RespuestaEscaneoDTO`.
+- Es la única clase del dominio que usan los controllers.
 
+**Tests:** con `GestorDeStock` mockeado, cada método delega una vez y devuelve el
+DTO; no hay lógica duplicada.
+
+### E5 — e2e y cierre (S3)
+
+- `@SpringBootTest` con la app completa recorriendo los 8 escenarios del plan
+  maestro en perfil `dev`.
 - README de la API: cómo levantar, tabla de endpoints, ejemplos y códigos de
   error.
 - Guion de demo con `.http`: ingreso, reserva minorista, mayorista rechazada,
   mayorista OK, despacho y auditoría.
-- Repaso del patrón Adapter para el oral.
+- Repaso de Facade y Adapter para el oral.
+
+**Criterio:** suite e2e verde y colección `.http` ejecutable sin pasos manuales.
 
 ---
 
@@ -103,7 +113,8 @@ plan maestro en perfil `dev`.
 - No implementás reglas de negocio ni transiciones (A).
 - No definís reservas ni observadores (C).
 - No escribís entidades ni consultas JPA (D).
-- No cambiás `domain/**` sin PR de contrato.
+- No cambiás `domain/model`, `domain/state` ni `domain/composite` (A).
+- No implementás el `GestorDeStock`: la fachada lo consume, no lo reemplaza.
 
 ---
 
@@ -111,7 +122,8 @@ plan maestro en perfil `dev`.
 
 | Interfaz | Dueño | Uso |
 |---|---|---|
-| `FachadaEscaneo` | A | 4 operaciones de escaneo |
+| `FachadaEscaneo` | interfaz de A, implementación tuya | 4 operaciones de escaneo |
+| `GestorDeStock` | A | implementar la fachada |
 | `EscaneoDTO`, `RespuestaEscaneoDTO` | A | entrada/salida del dominio |
 | `ServicioConsultas` | C | GET inventario y auditoría |
 | `ItemInventario`, `Movimiento` | A | respuestas |
@@ -124,6 +136,7 @@ plan maestro en perfil `dev`.
 - [ ] DTOs con validación y esqueleto de API.
 - [ ] 4 endpoints de escaneo + 3 de consulta.
 - [ ] Manejo de errores uniforme con 5 tests MockMvc.
+- [ ] `FachadaEscaneo` implementada y probada con el gestor mockeado.
 - [ ] Adapter de cámara y pistola + simulado, con tests.
 - [ ] Suite e2e de los 8 escenarios.
 - [ ] `.http` y README de API.

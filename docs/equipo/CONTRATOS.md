@@ -17,7 +17,7 @@ Se mergea antes de empezar el Sprint 1.
 | `domain.state` | `EstadoItem` + 4 estados | A |
 | `domain.composite` | `Colchon`, `Lote` | A |
 | `domain.service` | `GestorDeStock` (A), `ServicioConsultas` (C) | A / C |
-| `domain.facade` | `FachadaEscaneo` | A |
+| `domain.facade` | `FachadaEscaneo` (interfaz congelada por A) | E |
 | `domain.port` | `RepositorioItems`, `RepositorioMovimientos` | A (los implementa D) |
 | `domain.exception` | Excepciones de negocio | A |
 | `domain.decorator` | `IRegistroMovimiento` y decoradores | B |
@@ -206,6 +206,9 @@ public interface FachadaEscaneo {
     RespuestaEscaneoDTO despachar(EscaneoDTO solicitud);
 }
 ```
+
+**Facade:** la interfaz la congela A en el Sprint 0; la implementación es de E.
+Es la única puerta de entrada que usa la capa REST.
 
 **Singleton:** `GestorDeStock` es `@Service`; Spring garantiza una única
 instancia. Si la cátedra pide el `getInstance()` clásico, se agrega un holder

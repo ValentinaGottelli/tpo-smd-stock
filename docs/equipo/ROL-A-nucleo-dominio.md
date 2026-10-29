@@ -1,27 +1,28 @@
 # Rol A — Núcleo de dominio e integración
 
-**Dueño:** vos · **Carga:** ~30 % · **Patrones:** State, Composite, Singleton, Facade
+**Dueño:** vos · **Carga:** ~27 % · **Patrones:** State, Composite, Singleton
 
 **Paquetes:** `domain/model`, `domain/dto`, `domain/state`, `domain/composite`,
-`domain/service` (solo `GestorDeStock`), `domain/facade`, `domain/port`,
-`domain/exception`
+`domain/service` (solo `GestorDeStock`), `domain/port`, `domain/exception`
 
 ---
 
 ## Mensaje para el grupo
 
-> Me encargo del núcleo: modelo, State, Composite, GestorDeStock y Fachada, más
-> la integración final. En los primeros días dejo mergeadas todas las interfaces
-> para que puedan arrancar sin esperarme. No toco sus paquetes, y cualquier
-> cambio de interfaz va por PR `contrato/*`.
+> Me encargo del núcleo: modelo, State, Composite y GestorDeStock, más la
+> integración final. En los primeros días dejo mergeadas todas las interfaces
+> para que puedan arrancar sin esperarme. La fachada la implementa E sobre la
+> interfaz que congelo yo. No toco sus paquetes, y cualquier cambio de interfaz
+> va por PR `contrato/*`.
 
 ---
 
 ## Por qué te toca
 
 Es la parte con más decisiones de diseño: define el modelo, el ciclo de vida, la
-composición colchón/lote, el orquestador y la única puerta de entrada al
-dominio. Además concentra los cuatro patrones que cruzan todo el TP.
+composición colchón/lote y el orquestador central. Concentra los patrones que
+cruzan todo el TP; la fachada queda en E para repartir la carga y porque es un
+patrón de borde, igual que el Adapter.
 
 ---
 
@@ -36,8 +37,9 @@ implementación.
 - `domain/dto`: `EscaneoDTO`, `RespuestaEscaneoDTO`
 - `domain/state`: `EstadoItem`
 - `domain/port`: `RepositorioItems`, `RepositorioMovimientos`
-- `domain/strategy`, `domain/observer`, `domain/decorator`, `domain/factory`,
-  `domain/facade`: solo las interfaces
+- `domain/strategy`, `domain/observer`, `domain/decorator`, `domain/factory`:
+  solo las interfaces
+- `domain/facade`: interfaz `FachadaEscaneo` (la implementa E)
 - `domain/exception`: las cuatro excepciones
 
 **Criterio:** `mvnw test` verde y B, C, D y E confirman que pueden implementar
@@ -84,29 +86,28 @@ buscar ítem → validar transición → (Strategy si es reserva)
 despacho inválido, cancelación, notificación única y que no se notifique si
 falla la persistencia.
 
-### A5 — Fachada y wiring (S2)
+### A5 — Integración y wiring (S2)
 
-- `FachadaEscaneo` implementa los 4 métodos y delega en `GestorDeStock`.
-- **Sin reglas propias**: solo arma la solicitud y devuelve el DTO.
-- Cablear los beans que falten sin invadir paquetes de B, C y D.
-- Es la única clase que presentación puede usar del dominio.
+- Cablear los beans que falten sin invadir paquetes de B, C, D ni la fachada de E.
+- Verificar que el gestor reciba repositorios, estrategia, fábrica y observadores.
+- Correr los 8 escenarios de la demo en H2 y anotar qué falla para repartir.
 
-**Criterio:** los 8 escenarios de la demo pasan en H2.
+**Criterio:** la app levanta con `dev` y los 8 escenarios pasan.
 
 ### A6 — Cierre (S3)
 
 - Diagrama de clases y diagrama de secuencia del escaneo.
-- Sección de arquitectura y de State/Composite/Singleton/Facade para el informe.
+- Sección de arquitectura y de State/Composite/Singleton para el informe.
 - Guion técnico de la demo y tag `v1.0`.
 
 ---
 
 ## Qué NO hacés
 
+- No implementás `FachadaEscaneo`: la interfaz es tuya (A1), la clase es de E.
 - No implementás reservas por canal (C) ni validaciones de movimiento (B).
 - No escribís entidades JPA ni mappers (D).
 - No escribís controllers ni adapters (E).
-- No cambiás `pom.xml` por pedidos ajenos sin revisar el impacto.
 
 ---
 
@@ -114,7 +115,6 @@ falla la persistencia.
 
 - A2 y A3: tests puros de Java, sin Spring.
 - A4: Mockito para puertos, estrategia, fábrica y observadores.
-- A5: `GestorDeStock` mockeado.
 
 ---
 
@@ -123,7 +123,6 @@ falla la persistencia.
 - [ ] Contratos mergeados antes del Sprint 1.
 - [ ] 16 tests de State + tests de Composite.
 - [ ] `GestorDeStock` con los 7 tests de flujo.
-- [ ] `FachadaEscaneo` sin reglas propias.
-- [ ] 8 escenarios funcionando en H2.
+- [ ] Wiring completo y 8 escenarios funcionando en H2.
 - [ ] Diagramas y secciones del informe.
 - [ ] Demo ensayada y tag `v1.0`.

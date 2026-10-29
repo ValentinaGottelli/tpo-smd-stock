@@ -34,16 +34,17 @@ infraestructura.
 
 ## 2. Reparto
 
-Cada persona tiene **al menos un patrón** y paquetes propios. El criterio es que
-cada uno pueda trabajar y probar su parte sin esperar al resto.
+Cada persona tiene **al menos un patrón** (o una responsabilidad técnica
+equivalente, como D con Repository/Mapper) y paquetes propios. El criterio es
+que cada uno pueda trabajar y probar su parte sin esperar al resto.
 
 | Rol | Alcance | Patrones | Carga |
 |---|---|---|---|
-| **A** | Modelo, núcleo de dominio, integración | **State, Composite, Singleton, Facade** | ~30 % |
+| **A** | Modelo, núcleo de dominio, integración | **State, Composite, Singleton** | ~27 % |
 | **B** | Registro de movimientos y validaciones | Decorator, Simple Factory | ~20 % |
 | **C** | Reservas por canal y notificaciones | Strategy, Observer | ~18 % |
-| **D** | Persistencia y base de datos | JPA, Repository, Mapper | ~16 % |
-| **E** | API REST, adapters y pruebas | Adapter, DTOs | ~16 % |
+| **D** | Persistencia y base de datos | Repository, Mapper | ~16 % |
+| **E** | API REST, fachada, adapters y pruebas | **Facade, Adapter** | ~19 % |
 
 | Rol | Integrante |
 |---|---|
@@ -98,11 +99,12 @@ Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min
 | ID | Dueño | Tarea | Criterio de aceptación |
 |---|---|---|---|
 | A4 | A | `GestorDeStock` (Singleton) orquesta el flujo | Tests de ingreso/reserva/despacho/cancelación |
-| A5 | A | `FachadaEscaneo` + wiring de beans | La API funciona end-to-end en H2 |
+| A5 | A | Wiring de beans e integración en H2 | La API funciona end-to-end |
 | B3 | B | `ValidacionEmbalaje`, `ValidacionFIFO`, `AlertaStockBajo` | Embalaje dañado y despacho no FIFO rechazan |
 | C3 | C | Observadores y `ServicioConsultas` | Una transición notifica a los dos observadores |
 | D3 | D | Datos de demo y ajustes de mapeo | La base persiste y se reinicia sin errores |
-| E3 | E | Adapter de lectores + tests e2e | 8 escenarios verdes y lectores simulados |
+| E3 | E | Adapter de lectores | Los tres lectores devuelven el mismo tipo |
+| E4 | E | `FachadaEscaneo`: única puerta de entrada | Delega en el gestor y devuelve el DTO |
 
 ### S3 — Cierre
 
@@ -112,7 +114,7 @@ Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min
 | B4 | B | Tests de combinación de decoradores + sección del informe |
 | C4 | C | Sección de Strategy/Observer + guion de demo de reservas |
 | D4 | D | Diagrama entidad-relación + sección de persistencia |
-| E4 | E | README de la API + guion de demo con `.http` |
+| E5 | E | Suite e2e de los 8 escenarios + README de la API |
 
 ---
 
@@ -122,11 +124,11 @@ Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min
 
 | Área | Paquetes | Dueño |
 |---|---|---|
-| Modelo, State, Composite, Gestor, Facade, puertos, excepciones | `domain/model`, `domain/dto`, `domain/state`, `domain/composite`, `domain/service` (Gestor), `domain/facade`, `domain/port`, `domain/exception` | A |
+| Modelo, State, Composite, Gestor, puertos, excepciones | `domain/model`, `domain/dto`, `domain/state`, `domain/composite`, `domain/service` (Gestor), `domain/port`, `domain/exception` | A |
 | Decorator y Factory | `domain/decorator`, `domain/factory` | B |
 | Strategy, Observer, consultas | `domain/strategy`, `domain/observer`, `ServicioConsultas` | C |
 | Persistencia | `persistence/**` | D |
-| Presentación | `presentation/**`, `README.md`, `docs/http/**` | E |
+| Fachada y presentación | `domain/facade`, `presentation/**`, `README.md`, `docs/http/**` | E |
 | `pom.xml` | Solo A | A |
 
 **No se toca un archivo de otro sin avisar en el grupo.** Si hace falta, se pide

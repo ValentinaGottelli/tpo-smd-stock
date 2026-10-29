@@ -123,11 +123,11 @@ Cada paquete tiene un `package-info.java` que explica su responsabilidad.
 
 | Patrón | Paquete | Dueño |
 |---|---|---|
-| State, Composite, Singleton, Facade | `domain/state`, `domain/composite`, `domain/service`, `domain/facade` | A |
+| State, Composite, Singleton | `domain/state`, `domain/composite`, `domain/service` | A |
 | Decorator, Factory | `domain/decorator`, `domain/factory` | B |
 | Strategy, Observer | `domain/strategy`, `domain/observer` | C |
 | Repository / Mapper / JPA | `persistence/**` | D |
-| Adapter | `presentation/adapter` | E |
+| Facade, Adapter | `domain/facade`, `presentation/adapter` | E |
 
 ---
 
