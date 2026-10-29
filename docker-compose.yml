@@ -1,0 +1,24 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: smd-stock-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: smd_stock
+      MYSQL_USER: smd
+      MYSQL_PASSWORD: smd
+    ports:
+      - "3306:3306"
+    volumes:
+      - smd-mysql-data:/var/lib/mysql
+      # Los scripts de db/ se ejecutan solo la primera vez (volumen vacio).
+      - ./src/main/resources/db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  smd-mysql-data:

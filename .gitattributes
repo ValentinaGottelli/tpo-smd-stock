@@ -1,0 +1,13 @@
+# Normaliza finales de línea para que el proyecto funcione en Windows, Linux y macOS
+* text=auto
+
+# Wrapper de Maven: mvnw debe quedar con LF para correr en Linux/macOS
+mvnw text eol=lf
+mvnw.cmd text eol=crlf
+
+# Scripts y configuración
+*.sql text
+*.properties text
+*.yml text
+*.yaml text
+*.md text
