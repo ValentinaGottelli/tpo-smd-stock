@@ -1,37 +1,35 @@
 # Contratos del dominio — congelar en Sprint 0
 
-Este documento fija **nombres, paquetes y firmas** para que las cinco personas
-puedan programar en paralelo. Se mergea antes de empezar el Sprint 1.
+Fija **nombres, paquetes y firmas** para que los cinco programen en paralelo.
+Se mergea antes de empezar el Sprint 1.
 
-> **Regla:** si necesitás cambiar una firma, abrí un PR `contrato/<tema>`,
-> avisá en el grupo y que lo revise A + el dueño del módulo afectado.
-> Un cambio silencioso acá rompe el trabajo de los demás.
+> **Regla:** si necesitás cambiar una firma, abrí un PR `contrato/<tema>`, avisá
+> en el grupo y que lo revisen A y el dueño del módulo afectado.
 
 ---
 
-## 1. Paquetes y responsabilidades
+## 1. Paquetes
 
 | Paquete | Contenido | Dueño |
 |---|---|---|
 | `domain.model` | `ItemInventario`, `Movimiento`, enums | A |
-| `domain.dto` | `EscaneoDTO`, `RespuestaEscaneoDTO` (contrato con la fachada) | A |
+| `domain.dto` | `EscaneoDTO`, `RespuestaEscaneoDTO` | A |
 | `domain.state` | `EstadoItem` + 4 estados | A |
 | `domain.composite` | `Colchon`, `Lote` | A |
 | `domain.service` | `GestorDeStock` (A), `ServicioConsultas` (C) | A / C |
 | `domain.facade` | `FachadaEscaneo` | A |
 | `domain.port` | `RepositorioItems`, `RepositorioMovimientos` | A (los implementa D) |
 | `domain.exception` | Excepciones de negocio | A |
-| `domain.decorator` | `IRegistroMovimiento`, decoradores | B |
+| `domain.decorator` | `IRegistroMovimiento` y decoradores | B |
 | `domain.factory` | `FabricaMovimiento` | B |
-| `domain.strategy` | `EstrategiaReserva` + implementaciones | C |
+| `domain.strategy` | `EstrategiaReserva`, `SelectorEstrategia` | C |
 | `domain.observer` | `ObservadorStock`, `EventoStock` | C |
 | `persistence.**` | Entidades JPA, repositorios, mappers | D |
-| `presentation.**` | Controllers, request/response HTTP, adapters | E |
+| `presentation.**` | Controllers, DTOs HTTP, adapters | E |
 
-> Los DTOs de entrada/salida del dominio viven en `domain.dto` para que el
-> dominio **no dependa** de la capa web (tal como pide el informe). La capa REST
-> tiene su propio `EscaneoRequest` con las validaciones de Bean Validation y lo
-> convierte a `EscaneoDTO`.
+Los DTOs del dominio viven en `domain.dto` para que el dominio **no dependa** de
+la capa web. La capa REST tiene su `EscaneoRequest` con Bean Validation y lo
+convierte.
 
 ---
 
@@ -47,23 +45,19 @@ public enum TipoMovimiento { INGRESO, RESERVA, CANCELACION, DESPACHO, AJUSTE }
 public enum CanalVenta { DREAMO_LOCAL, DREAMO_MELI, DREAMO_FRAVEGA, RUBIN }
 ```
 
-Mapeo de canales a estrategia: los tres `DREAMO_*` → minorista; `RUBIN` →
-mayorista.
+Los tres `DREAMO_*` usan reserva minorista; `RUBIN`, mayorista.
 
 ---
 
 ## 3. Modelo
 
 ```java
-package com.smd.inventario.domain.model;
-
 public interface ItemInventario {
     String getCodigo();
     int getCantidad();
     LocalDate getFechaProduccion();
     EstadoProducto getEstado();
 
-    /** Transiciones del patrón State (ver matriz en la sección 8). */
     void ingresar();
     void reservar();
     void cancelarReserva();
@@ -78,7 +72,7 @@ public interface ItemInventario {
 public record Movimiento(
         String codigoItem,
         TipoMovimiento tipo,
-        CanalVenta canal,              // null en INGRESO y AJUSTE
+        CanalVenta canal,               // null en INGRESO y AJUSTE
         String usuario,
         LocalDateTime fechaHora,
         EstadoProducto estadoAnterior,
@@ -86,8 +80,6 @@ public record Movimiento(
         int cantidad
 ) { }
 ```
-
-`Colchon` y `Lote` (en `domain.composite`):
 
 ```java
 public final class Colchon implements ItemInventario {
@@ -104,9 +96,8 @@ public final class Lote implements ItemInventario {
 Invariantes:
 
 - `Colchon.getCantidad()` devuelve siempre `1`.
-- `Lote.getCantidad()` devuelve la suma de sus hijos (0 si está vacío; un lote
-  vacío no debe persistirse ni reservarse).
-- `Lote.cambiarEstado(estado)` aplica el cambio a todos sus hijos.
+- `Lote.getCantidad()` suma sus hijos (0 si está vacío).
+- `Lote.cambiarEstado(estado)` aplica el cambio a todos los hijos.
 - Un ítem `DESPACHADO` no admite más transiciones.
 
 ---
@@ -124,18 +115,17 @@ public interface EstadoItem {
 ```
 
 Implementaciones: `EstadoProducido`, `EstadoEnDeposito`, `EstadoReservado`,
-`EstadoDespachado`. Cada transición inválida lanza
-`TransicionInvalidaException`.
+`EstadoDespachado`. Transición inválida → `TransicionInvalidaException`.
 
 ---
 
-## 5. Puertos de persistencia (`domain.port`)
+## 5. Puertos (`domain.port`)
 
 ```java
 public interface RepositorioItems {
     Optional<ItemInventario> buscarPorCodigo(String codigo);
     List<ItemInventario> listarPorEstado(EstadoProducto estado);
-    Optional<ItemInventario> buscarMasAntiguoEnDeposito();   // criterio FIFO
+    Optional<ItemInventario> buscarMasAntiguoEnDeposito();   // FIFO
     List<ItemInventario> listarTodos();
     void guardar(ItemInventario item);
 
@@ -154,16 +144,13 @@ public interface RepositorioMovimientos {
 }
 ```
 
-Estas interfaces son el **único** acceso del dominio a la base. D las implementa
-con JPA en `persistence.repository`.
+Son el **único** acceso del dominio a la base. D los implementa con JPA.
 
 ---
 
 ## 6. Strategy y Observer
 
 ```java
-package com.smd.inventario.domain.strategy;
-
 public interface EstrategiaReserva {
     CanalVenta canal();
     void validar(ItemInventario item);   // lanza ReglaDeNegocioException
@@ -175,8 +162,6 @@ public interface SelectorEstrategia {
 ```
 
 ```java
-package com.smd.inventario.domain.observer;
-
 public record EventoStock(Movimiento movimiento, int stockDisponible) { }
 
 public interface ObservadorStock {
@@ -189,28 +174,22 @@ public interface ObservadorStock {
 ## 7. Decorator, Factory, Gestor y Fachada
 
 ```java
-package com.smd.inventario.domain.decorator;
-
 public interface IRegistroMovimiento {
     void registrar(Movimiento movimiento);
 }
 ```
 
-`RegistroMovimientoBase` persiste el movimiento con `RepositorioMovimientos`.
+`RegistroMovimientoBase` persiste con `RepositorioMovimientos`.
 `DecoradorRegistro` es abstracto y envuelve a otro `IRegistroMovimiento`.
-Decoradores concretos: `ValidacionEmbalaje`, `ValidacionFIFO`, `AlertaStockBajo`.
+Decoradores: `ValidacionEmbalaje`, `ValidacionFIFO`, `AlertaStockBajo`.
 
 ```java
-package com.smd.inventario.domain.factory;
-
 public interface FabricaMovimiento {
     IRegistroMovimiento crear(TipoMovimiento tipo);
 }
 ```
 
 ```java
-package com.smd.inventario.domain.service;
-
 public class GestorDeStock {
     public void ingresar(EscaneoDTO solicitud);
     public void reservar(EscaneoDTO solicitud);
@@ -220,8 +199,6 @@ public class GestorDeStock {
 ```
 
 ```java
-package com.smd.inventario.domain.facade;
-
 public interface FachadaEscaneo {
     RespuestaEscaneoDTO registrarIngreso(EscaneoDTO solicitud);
     RespuestaEscaneoDTO reservar(EscaneoDTO solicitud);
@@ -230,10 +207,9 @@ public interface FachadaEscaneo {
 }
 ```
 
-> **Singleton:** `GestorDeStock` se declara `@Service` y Spring garantiza una
-> única instancia (scope singleton). Si la cátedra exige el `getInstance()`
-> clásico, se agrega un holder estático en una clase aparte, sin romper la
-> inyección. Confirmar con el docente antes de la entrega.
+**Singleton:** `GestorDeStock` es `@Service`; Spring garantiza una única
+instancia. Si la cátedra pide el `getInstance()` clásico, se agrega un holder
+estático aparte sin romper la inyección.
 
 ---
 
@@ -246,12 +222,11 @@ public interface FachadaEscaneo {
 | `RESERVADO` | error | error | → `EN_DEPOSITO` | → `DESPACHADO` |
 | `DESPACHADO` | error | error | error | error |
 
-Toda celda “error” lanza `TransicionInvalidaException` y **no** modifica el ítem
-ni persiste nada.
+Cada “error” lanza `TransicionInvalidaException` y **no** modifica nada.
 
 ---
 
-## 9. DTOs del dominio (`domain.dto`)
+## 9. DTOs del dominio
 
 ```java
 public record EscaneoDTO(
@@ -259,8 +234,7 @@ public record EscaneoDTO(
         TipoMovimiento tipo,
         CanalVenta canal,
         String usuario,
-        Boolean embalajeOk,        // null = true; lo usa ValidacionEmbalaje
-        LocalDateTime fechaHora    // null = ahora
+        Boolean embalajeOk      // null = true
 ) { }
 ```
 
@@ -277,7 +251,7 @@ public record RespuestaEscaneoDTO(
 
 ---
 
-## 10. Excepciones (`domain.exception`)
+## 10. Excepciones
 
 | Excepción | Situación | HTTP |
 |---|---|---|
@@ -286,14 +260,14 @@ public record RespuestaEscaneoDTO(
 | `ReglaDeNegocioException` | Strategy / Decorator rechaza | 409 |
 | `RecursoNoEncontradoException` | código inexistente | 404 |
 
-E las traduce en un `@RestControllerAdvice` a un JSON `ErrorDTO(codigo, mensaje,
-fechaHora, path)`.
+E las traduce en un `@RestControllerAdvice` a
+`ErrorDTO(codigo, mensaje, fechaHora, path)`.
 
 ---
 
-## 11. API acordada (la implementa E)
+## 11. API acordada
 
-| Método | Ruta | Body / query | Respuesta |
+| Método | Ruta | Body | Respuesta |
 |---|---|---|---|
 | POST | `/api/escaneos/ingreso` | `EscaneoRequest` | `RespuestaEscaneoDTO` |
 | POST | `/api/escaneos/reserva` | `EscaneoRequest` | `RespuestaEscaneoDTO` |
@@ -303,12 +277,6 @@ fechaHora, path)`.
 | GET | `/api/inventario/{codigo}` | — | `ItemInventarioResponse` |
 | GET | `/api/auditoria?limite=50` | — | `List<MovimientoResponse>` |
 | GET | `/api/health` | — | `HealthResponse` (ya existe) |
-
-`EscaneoRequest`: `codigo`, `canal`, `usuario`, `embalajeOk`, `fechaHora`
-(opcional). El tipo de movimiento lo fija el endpoint; el DTO de dominio lo
-declara para trazabilidad.
-
-Ejemplo:
 
 ```json
 POST /api/escaneos/reserva
@@ -326,16 +294,15 @@ POST /api/escaneos/reserva
 
 | Propiedad | Valor | Dueño |
 |---|---|---|
-| `app.stock.umbral-minimo` | `10` | B (la usa `AlertaStockBajo`) |
+| `app.stock.umbral-minimo` | `10` | B (`AlertaStockBajo`) |
 | `app.escaneo.usuario-default` | `operario01` | E |
-| Perfiles | `dev`, `devfile`, `mysql` | ya configurados |
 
 ---
 
-## 13. Checklist antes de cerrar el Sprint 0
+## 13. Checklist del Sprint 0
 
 - [ ] Todas las interfaces de este documento están en `main` y compilan.
 - [ ] Cada rol confirmó que puede implementar su parte sin tocar interfaces ajenas.
-- [ ] D confirmó que los puertos se pueden implementar con JPA sin cambios.
+- [ ] D confirmó que los puertos se implementan con JPA sin cambios.
 - [ ] E confirmó que los DTOs cubren todos los endpoints.
 - [ ] El tablero tiene una tarjeta por tarea del plan maestro.

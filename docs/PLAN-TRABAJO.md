@@ -1,57 +1,49 @@
 # Plan de trabajo — TPO SMD Stock
 
-**Materia:** Proceso de Desarrollo de Software
-**Grupo:** 01
+**Materia:** Proceso de Desarrollo de Software · **Grupo:** 1
 **Proyecto:** control de stock con escaneo QR — SMD Colchón Modular S.A.
-**Stack:** Spring Boot 3.5 + JPA/Hibernate + H2/MySQL
-**Integrantes:** 5
+**Stack:** Spring Boot + JPA + H2 · **Integrantes:** 5
 
-> Este documento es el plan maestro. Los planes individuales, listos para
-> reenviar a cada compañero, están en `docs/equipo/`.
->
-> Las duraciones son en **días de trabajo efectivo** (4–6 h). Ajustar las
-> semanas a la fecha real de entrega: si quedan menos semanas, recortar el
-> Sprint 4 (buffer) primero y el alcance de la demo después, nunca los
-> contratos ni los tests.
+> Este documento es el plan maestro. Los planes individuales están en
+> `docs/equipo/` y se pueden reenviar tal cual.
 
 ---
 
-## 1. Objetivo del reparto
+## 1. Alcance
 
-Llegar a una demo que recorra el flujo completo del TP:
+El TP es una **simulación**. Se evalúa el **diseño orientado a objetos**: que
+los patrones estén bien aplicados, justificados y probados. No se evalúa
+infraestructura.
 
-```
-escaneo → validación → cambio de estado → notificación → persistencia
-```
+**Entra:**
 
-Con **5 personas trabajando en paralelo sin pisarse**, cada una dueña de un
-conjunto de paquetes y con criterios de aceptación claros.
+- Monolito Spring Boot en tres capas (`presentation`, `domain`, `persistence`).
+- Base relacional **H2** (en memoria y en archivo). Sin instalar nada.
+- Los 9 patrones del informe: State, Composite, Singleton, Facade, Decorator,
+  Simple Factory, Strategy, Observer y Adapter.
+- API REST mínima, tests unitarios y demo de punta a punta.
 
-El reparto es por **módulos verticales del dominio**, no por “capas” sueltas:
-cada persona entrega algo que se puede probar solo, y la integración se hace
-semana a semana.
+**No entra** (si el docente lo pide, se evalúa como extra al final):
+
+- Docker, MySQL, despliegue, CI/CD.
+- Frontend o app móvil real: el Adapter se prueba con un lector simulado.
+- Login, roles, microservicios, colas, mensajería.
+- OpenAPI/Swagger y Postman: alcanza con un archivo `.http`.
 
 ---
 
-## 2. Criterio del reparto
+## 2. Reparto
 
-Vos tomás el **núcleo de dominio**: modelo, State, Composite, GestorDeStock,
-Facade y la integración técnica. Es la parte más extensa y la que más depende
-de decisiones de diseño, por eso queda en una sola persona (evita idas y
-vueltas de contratos).
+Cada persona tiene **al menos un patrón** y paquetes propios. El criterio es que
+cada uno pueda trabajar y probar su parte sin esperar al resto.
 
-El resto se reparte para que cada uno tenga **al menos un patrón del TP** y una
-responsabilidad técnica clara:
-
-| Rol | Alcance | Patrones / entregables | Carga | Peso |
-|---|---|---|---|---|
-| **A — vos** | Modelo + núcleo de dominio + integración | State, Composite, Singleton, Facade, modelo, contratos | 12 d | ~30 % |
-| **B** | Movimientos y validaciones | Decorator, Simple Factory | 8 d | ~20 % |
-| **C** | Reservas y notificaciones | Strategy, Observer | 7 d | ~17 % |
-| **D** | Persistencia y base de datos | JPA, mappers, esquema MySQL, docker | 7 d | ~17 % |
-| **E** | API REST y pruebas | DTOs, Adapter, controllers, OpenAPI, e2e | 7 d | ~15 % |
-
-Completar la columna de nombres al repartir:
+| Rol | Alcance | Patrones | Carga |
+|---|---|---|---|
+| **A** | Modelo, núcleo de dominio, integración | **State, Composite, Singleton, Facade** | ~30 % |
+| **B** | Registro de movimientos y validaciones | Decorator, Simple Factory | ~20 % |
+| **C** | Reservas por canal y notificaciones | Strategy, Observer | ~18 % |
+| **D** | Persistencia y base de datos | JPA, Repository, Mapper | ~16 % |
+| **E** | API REST, adapters y pruebas | Adapter, DTOs | ~16 % |
 
 | Rol | Integrante |
 |---|---|
@@ -63,235 +55,145 @@ Completar la columna de nombres al repartir:
 
 ---
 
-## 3. Dependencias entre roles
+## 3. Etapas
 
-```
-                    ┌────────────────────────────┐
-                    │ SPRINT 0: CONTRATOS (A)    │
-                    │ interfaces + DTOs + errores│
-                    └─────────────┬──────────────┘
-                                  │
-        ┌─────────────┬───────────┼─────────────┬─────────────┐
-        ▼             ▼           ▼             ▼             ▼
-   B: Decorator  C: Strategy   D: Puerto     E: API       A: Modelo
-      + Factory     + Observer    JPA           REST         + State
-        │             │           │             │          + Composite
-        └─────────────┴─────┬─────┴─────────────┘             │
-                            ▼                                ▼
-                  ┌──────────────────────────────────────────────┐
-                  │ A: GestorDeStock + FachadaEscaneo + wiring   │
-                  └───────────────────┬──────────────────────────┘
-                                      ▼
-                         Integración end-to-end + demo
-```
-
-**Regla de oro:** en el Sprint 0 se congelan las firmas de las interfaces. Si
-alguien necesita cambiarlas después, abre un PR `contrato/<tema>`, avisa en el
-grupo y lo revisa A junto con el dueño afectado. Sin esto, el paralelismo se
-rompe en la semana 2.
-
----
-
-## 4. Cronograma
-
-| Sprint | Duración | Meta | Hito verificable |
+| Etapa | Duración | Meta | Hito verificable |
 |---|---|---|---|
-| **S0** | 3 días | Contratos, git, esquema, esqueleto REST | `main` compila con interfaces y DTOs |
-| **S1** | 1 semana | Cada módulo base con tests unitarios | `mvnw test` verde por módulo |
-| **S2** | 1 semana | Patrones completos y cableados | Flujo completo en H2 por consola/servicio |
-| **S3** | 1 semana | Integración, MySQL, e2e, informe | Demo end-to-end + esquema validado |
-| **S4** | 3–4 días | Buffer, ensayo y presentación | Tag `v1.0` y guion de demo |
+| **S0 — Contratos** | 2–3 días | Interfaces, DTOs y excepciones congelados | `main` compila con los contratos |
+| **S1 — Patrones base** | 1 semana | Cada módulo con su caso feliz y un test | `mvnw test` verde por módulo |
+| **S2 — Integración** | 1 semana | Todo cableado y funcionando en H2 | Los 8 escenarios de la demo pasan |
+| **S3 — Cierre** | 2–3 días | Informe, diagramas y ensayo | Tag `v1.0` y demo ensayada |
 
-Cada semana: **una reunión de 30 min** (lunes) para revisar tablero y **un
-merge a `main` el viernes** con demo de 5 min de lo hecho.
+Reunión corta los lunes (30 min) y merge a `main` los viernes con demo de 5 min.
 
 ---
 
-## 5. Tareas por sprint
+## 4. Tareas
 
-### Sprint 0 — Contratos y puesta en marcha
+### S0 — Contratos
 
 | ID | Dueño | Tarea | Entregable |
 |---|---|---|---|
-| A1 | A | Congelar interfaces y excepciones (ver `CONTRATOS.md`) | PR `feat/contratos-dominio` mergeado |
-| D1 | D | Revisar/ampliar esquema: `item_inventario` (auto-referencia lote), `movimiento`, índices | `db/01-schema.sql` + `db/02-data.sql` |
-| E1 | E | DTOs + esqueleto de `EscaneoController` + colección Postman | PR `feat/api-base` |
-| B1 | B | Casos de aceptación de movimientos y validaciones (documento) | `docs/equipo/casos-B.md` |
+| A1 | A | Interfaces, DTOs y excepciones (ver `CONTRATOS.md`) | PR `feat/contratos` mergeado |
+| B1 | B | Casos de aceptación de movimientos y validaciones | `docs/equipo/casos-B.md` |
 | C1 | C | Casos de aceptación de reservas y notificaciones | `docs/equipo/casos-C.md` |
-| Todos | — | `git init`, rama `main`, tablero con estas tareas, acordar horarios | Repo + tablero |
+| D1 | D | Entidades JPA, repositorios y mappers base | PR `feat/persistencia-base` |
+| E1 | E | DTOs HTTP, esqueleto de controllers y `.http` | PR `feat/api-base` |
 
-**Salida del S0:** `main` compila, los contratos están mergeados y cada uno
-sabe qué archivos son suyos.
+**Salida:** los contratos están en `main` y cada uno sabe qué archivos son suyos.
 
----
-
-### Sprint 1 — Base de cada módulo
+### S1 — Patrones base
 
 | ID | Dueño | Tarea | Criterio de aceptación |
 |---|---|---|---|
-| A2 | A | `Colchon` y `Lote` (Composite): cantidad, fecha de producción, cambio de estado en cascada | Test: lote de 5 colchones devuelve 5 y cambia los 5 estados |
-| A3 | A | State: 4 estados y matriz de transiciones | Test: 16 combinaciones, válidas e inválidas |
-| B2 | B | `RegistroMovimientoBase` + `DecoradorRegistro` + `FabricaMovimiento` (sin validaciones) | Test: cada `TipoMovimiento` devuelve una cadena no nula |
-| C2 | C | `EstrategiaReserva`, `ReservaMinorista`, `ReservaMayorista`, selector por canal | Test: Rubín con 4 rechaza, con 5 acepta; dreamö con 1 acepta |
-| D2 | D | Entidades `ItemInventarioEntity` y `MovimientoEntity`, repositorios, mappers, implementación de puertos | `@DataJpaTest` verde contra H2 |
-| E2 | E | `EscaneoController` (4 endpoints) + validación + `@RestControllerAdvice` | MockMvc verde con fachada mockeada |
+| A2 | A | Composite: `Colchon` y `Lote` | Lote de 5 devuelve 5 y cambia los 5 estados |
+| A3 | A | State: 4 estados y matriz de transiciones | 16 combinaciones válidas e inválidas |
+| B2 | B | `RegistroMovimientoBase`, `DecoradorRegistro`, `FabricaMovimiento` | Cada tipo devuelve una cadena armada |
+| C2 | C | `EstrategiaReserva`, minorista, mayorista y selector | Rubín con 4 rechaza, con 5 acepta |
+| D2 | D | Puertos implementados + consultas FIFO | `@DataJpaTest` verde en H2 |
+| E2 | E | Controllers reales + `@RestControllerAdvice` | MockMvc verde con fachada mockeada |
 
----
-
-### Sprint 2 — Patrones completos
+### S2 — Integración
 
 | ID | Dueño | Tarea | Criterio de aceptación |
 |---|---|---|---|
-| A4 | A | `GestorDeStock` (Singleton): orquesta estado, estrategia, fábrica y observadores; persiste | Tests con fakes: flujo ingreso/reserva/despacho/cancelación |
-| A5 | A | `FachadaEscaneo`: única puerta de entrada, sin reglas propias | Test: delega y devuelve `RespuestaEscaneoDTO` |
-| B3 | B | `ValidacionEmbalaje`, `ValidacionFIFO`, `AlertaStockBajo` + armado de cadenas en la fábrica | Tests: embalaje dañado rechaza; despacho no FIFO rechaza; alerta al bajar del umbral |
-| C3 | C | `ObservadorStock`, `ModuloVentas`, `DashboardAuditoria` y suscripción en `GestorDeStock` | Test: una transición notifica a ambos observadores |
-| D3 | D | Transacciones, bloqueo optimista, consulta FIFO, consulta de auditoría | Tests de persistencia y de orden por fecha |
-| E3 | E | Adapter: `LectorCodigo`, `AdaptadorCamara`, `AdaptadorPistolaUSB`, lector simulado | Test: los tres lectores devuelven el mismo tipo de resultado |
+| A4 | A | `GestorDeStock` (Singleton) orquesta el flujo | Tests de ingreso/reserva/despacho/cancelación |
+| A5 | A | `FachadaEscaneo` + wiring de beans | La API funciona end-to-end en H2 |
+| B3 | B | `ValidacionEmbalaje`, `ValidacionFIFO`, `AlertaStockBajo` | Embalaje dañado y despacho no FIFO rechazan |
+| C3 | C | Observadores y `ServicioConsultas` | Una transición notifica a los dos observadores |
+| D3 | D | Datos de demo y ajustes de mapeo | La base persiste y se reinicia sin errores |
+| E3 | E | Adapter de lectores + tests e2e | 8 escenarios verdes y lectores simulados |
 
----
-
-### Sprint 3 — Integración, MySQL e informe
-
-| ID | Dueño | Tarea | Criterio de aceptación |
-|---|---|---|---|
-| A6 | A | Integración final, wiring de beans, revisión de PRs de dominio | Los 8 escenarios de la sección 7 pasan en H2 |
-| A7 | A | Diagramas de clases y secuencia + sección de arquitectura del informe | Diagramas exportados en `docs/diagramas/` |
-| B4 | B | Tests de combinaciones de decoradores + sección del informe | Cobertura de los 3 decoradores y sus combinaciones |
-| C4 | C | Auditoría persistida + consulta de stock disponible + sección del informe | Reiniciar la app y la auditoría sigue estando |
-| D4 | D | Validar `ddl-auto=validate` contra MySQL, índices y datos de demo | App levanta con perfil `mysql` sin errores |
-| E4 | E | OpenAPI + e2e MockMvc + Postman contra MySQL | Colección ejecutable de punta a punta |
-
----
-
-### Sprint 4 — Cierre
+### S3 — Cierre
 
 | ID | Dueño | Tarea |
 |---|---|---|
-| A8 | A | Guion técnico de la demo y tag `v1.0` |
-| B5 | B | Repaso de validaciones para preguntas del docente |
-| C5 | C | Repaso de reservas y observadores |
-| D5 | D | Demo de MySQL y diagrama entidad-relación |
-| E5 | E | Demo de API/Postman y README final |
+| A6 | A | Integración final, diagramas y sección de arquitectura |
+| B4 | B | Tests de combinación de decoradores + sección del informe |
+| C4 | C | Sección de Strategy/Observer + guion de demo de reservas |
+| D4 | D | Diagrama entidad-relación + sección de persistencia |
+| E4 | E | README de la API + guion de demo con `.http` |
 
 ---
 
-## 6. Reglas de trabajo
+## 5. Reglas de trabajo
 
-### Archivos y propiedad
+### Propiedad de archivos
 
-| Área | Paquetes / archivos | Dueño |
+| Área | Paquetes | Dueño |
 |---|---|---|
-| Modelo, State, Composite, Gestor, Facade, excepciones | `domain/model`, `domain/state`, `domain/composite`, `domain/service` (solo `GestorDeStock`), `domain/facade`, `domain/exception`, `domain/port` | A |
-| Consultas de lectura | `domain/service/ServicioConsultas.java` | C |
+| Modelo, State, Composite, Gestor, Facade, puertos, excepciones | `domain/model`, `domain/dto`, `domain/state`, `domain/composite`, `domain/service` (Gestor), `domain/facade`, `domain/port`, `domain/exception` | A |
 | Decorator y Factory | `domain/decorator`, `domain/factory` | B |
-| Strategy y Observer | `domain/strategy`, `domain/observer` | C |
-| Persistencia | `persistence/**`, `src/main/resources/db/**`, `docker-compose.yml` | D |
+| Strategy, Observer, consultas | `domain/strategy`, `domain/observer`, `ServicioConsultas` | C |
+| Persistencia | `persistence/**` | D |
 | Presentación | `presentation/**`, `README.md`, `docs/http/**` | E |
-| `pom.xml` | Solo A lo modifica (pedidos por PR/issue) | A |
+| `pom.xml` | Solo A | A |
 
-> Regla: **no se toca un archivo de otro sin avisar en el grupo**. Si hace
-> falta, se pide en el chat y se coordina para no generar conflictos.
+**No se toca un archivo de otro sin avisar en el grupo.** Si hace falta, se pide
+y se coordina.
 
 ### Git
 
 - `main` siempre compila y con tests verdes.
-- Ramas: `feat/state`, `feat/decorator`, `feat/persistencia`, `feat/api`…
-- Un PR = una tarea del plan. Título `A3: implementar State`.
-- Cada PR lo revisa **una persona distinta del autor** (rotativo).
-- Merge con squash, mensaje `feat(dominio): implementar State`.
-- No se mergea nada sin `.\mvnw.cmd test` verde.
+- Una rama por tarea: `feat/state`, `feat/decorator`, `feat/api`…
+- Un PR = una tarea. Título `A3: implementar State`.
+- Lo revisa alguien distinto del autor y se mergea con squash.
+- Nada se mergea sin `.\mvnw.cmd test` verde.
 
 ### Comunicación
 
-- Tablero (GitHub Projects o Trello) con las columnas: *Pendiente / En curso / En revisión / Hecho*.
-- Si alguien está bloqueado **más de 2 horas**, avisa en el grupo; no se queda trabado.
-- Reporte semanal corto (plantilla en la sección 10).
+- Tablero con: *Pendiente / En curso / En revisión / Hecho*.
+- Bloqueado más de 2 horas → avisar en el grupo.
+- Reporte semanal de 5 líneas: hecho, en curso, bloqueado, PRs, riesgos.
 
 ---
 
-## 7. Escenarios de aceptación (guion de demo)
+## 6. Escenarios de la demo
 
-Estos 8 casos son el criterio de “el TP funciona”. Se prueban en H2 y en MySQL.
+Son el criterio de “el TP funciona”.
 
-1. **Ingreso**: escanear `COLCHON-QR-0001` en estado `PRODUCIDO` → pasa a `EN_DEPOSITO` y queda un movimiento de ingreso con usuario y fecha.
+1. **Ingreso**: escanear `COLCHON-QR-0001` en `PRODUCIDO` → `EN_DEPOSITO` y queda el movimiento.
 2. **Reserva minorista** (dreamö): 1 colchón `EN_DEPOSITO` → `RESERVADO`.
-3. **Reserva mayorista** (Rubín) con 4 unidades → rechazada con error de negocio.
+3. **Reserva mayorista** (Rubín) con 4 unidades → rechazada.
 4. **Reserva mayorista** con 5 unidades → aceptada.
 5. **Cancelación**: un `RESERVADO` vuelve a `EN_DEPOSITO`.
-6. **Despacho FIFO**: se despacha el lote más antiguo; un lote posterior es rechazado.
-7. **Composite**: despachar un lote de 5 colchones deja los 5 en `DESPACHADO` con un solo escaneo.
-8. **Persistencia + auditoría**: reiniciar la app (perfil `devfile` o MySQL) y los estados y la auditoría se conservan.
+6. **Despacho FIFO**: se despacha el más antiguo; uno posterior es rechazado.
+7. **Composite**: despachar un lote de 5 deja los 5 en `DESPACHADO` con un escaneo.
+8. **Persistencia**: reiniciar con `devfile` y los estados y la auditoría siguen ahí.
 
 ---
 
-## 8. Definition of Done (por tarea)
+## 7. Definition of Done
 
-- [ ] Compila: `.\mvnw.cmd -q test` sin errores.
-- [ ] Tests unitarios del módulo (caso feliz + al menos un caso de error).
+- [ ] `.\\mvnw.cmd test` verde.
+- [ ] Test del caso feliz + al menos un caso de error.
 - [ ] Javadoc en clases y métodos públicos.
-- [ ] Sin `TODO` sueltos: si queda algo, va como issue en el tablero.
+- [ ] Sin `TODO` sueltos (si queda algo, va como issue).
 - [ ] PR revisado y mergeado a `main`.
-- [ ] Funciona con perfil `dev` y no rompe `devfile` ni `mysql`.
-- [ ] Sección corta para el informe (qué patrón se usó, por qué y cómo se probó).
+- [ ] Funciona con `dev` y no rompe `devfile`.
+- [ ] Un párrafo para el informe: qué patrón, por qué y cómo se probó.
 
 ---
 
-## 9. Riesgos y mitigación
+## 8. Riesgos
 
-| Riesgo | Impacto | Mitigación |
-|---|---|---|
-| A se vuelve cuello de botella | Alto | Contratos cerrados en S0; interfaces mergeadas antes de que B/C/E empiecen |
-| Cambios de interfaz a mitad de sprint | Alto | PR `contrato/*` + revisión obligatoria de A y del dueño afectado |
-| Integración tardía | Alto | Merge semanal a `main` + demo de 5 min todos los viernes |
-| MySQL recién se prueba al final | Medio | D valida `ddl-auto=validate` en S3 temprano; E corre Postman contra MySQL en S3 |
-| Choque de archivos | Medio | Tabla de propiedad de paquetes + PRs chicos |
-| Alcance se infla (login, frontend, microservicios) | Medio | Fuera de alcance explícito (sección 11); todo lo extra va al backlog, no al TP |
-| Nadie sabe explicar una parte en el oral | Alto | Cada dueño documenta y expone su patrón en la demo |
+| Riesgo | Mitigación |
+|---|---|
+| A se vuelve cuello de botella | Contratos cerrados en S0 antes de que el resto arranque |
+| Cambios de interfaz a mitad de sprint | PR `contrato/*` + revisión de A y del dueño afectado |
+| Integración tardía | Merge semanal + demo de 5 min todos los viernes |
+| Alguien no sabe explicar su parte en el oral | Cada dueño documenta y expone su patrón en la demo |
+| El alcance se infla | Todo lo que no esté en la sección 1 va al backlog |
 
 ---
 
-## 10. Plantilla de reporte semanal
-
-```
-## Semana N — <nombre>
-Hecho:
-- ...
-En curso:
-- ...
-Bloqueado por:
-- ...
-PRs abiertos:
-- ...
-Riesgos:
-- ...
-```
-
----
-
-## 11. Fuera de alcance
-
-- Frontend / app móvil real y escaneo con cámara real (el Adapter se prueba con
-  un lector simulado).
-- Autenticación y roles (el usuario viaja en el DTO).
-- Microservicios, colas, mensajería.
-- Despliegue en producción.
-
-Si el docente pide algo de esto, se evalúa como extra **después** de tener los
-8 escenarios funcionando.
-
----
-
-## 12. Archivos para repartir
+## 9. Archivos para repartir
 
 | Archivo | Para quién |
 |---|---|
 | `docs/equipo/CONTRATOS.md` | Todos (leer antes de codificar) |
-| `docs/equipo/ROL-A-nucleo-dominio.md` | Rol A (vos) |
-| `docs/equipo/ROL-B-decorator-factory.md` | Rol B |
-| `docs/equipo/ROL-C-strategy-observer.md` | Rol C |
-| `docs/equipo/ROL-D-persistencia.md` | Rol D |
-| `docs/equipo/ROL-E-presentacion-pruebas.md` | Rol E |
-
-Cada plan individual es autocontenido: se puede copiar y mandar por WhatsApp o
-subir al Drive del grupo sin depender de este documento.
+| `docs/equipo/ROL-A-nucleo-dominio.md` | A |
+| `docs/equipo/ROL-B-decorator-factory.md` | B |
+| `docs/equipo/ROL-C-strategy-observer.md` | C |
+| `docs/equipo/ROL-D-persistencia.md` | D |
+| `docs/equipo/ROL-E-presentacion-pruebas.md` | E |
