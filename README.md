@@ -76,21 +76,19 @@ empezar de cero, detener la app y borrar `data/`.
 
 ---
 
-## Demo para mostrar (State + Composite)
+## Para la demo de mañana
 
-Sin Spring y sin base de datos: un `main` que muestra el ciclo de vida
-(`PRODUCIDO → EN_DEPOSITO → RESERVADO → DESPACHADO`), un lote de 5 colchones con
-cambio de estado en cascada y las transiciones rechazadas.
+La guía paso a paso para explicar **sin ejecutar nada** está en
+[`DEMO.md`](DEMO.md): qué archivo abrir, qué decir y qué preguntas pueden
+aparecer.
 
-```powershell
-.\mvnw.cmd -q compile
-java -cp target/classes com.smd.inventario.demo.DemoPatrones
-```
+Lo que se muestra es el núcleo del dominio:
 
-También se puede ejecutar desde IntelliJ con clic derecho sobre `DemoPatrones`.
+- **State**: `domain/state` (4 estados + matriz de transiciones)
+- **Composite**: `domain/composite` (`Colchon` y `Lote`)
+- **Tests**: `StateTest` (16 combinaciones) y `CompositeTest`
 
-- Código: `domain/state`, `domain/composite` y `demo/DemoPatrones.java`
-- Tests: `StateTest` (16 combinaciones) y `CompositeTest`
+Si te piden ejecutar algo: `.\mvnw.cmd test`.
 
 ---
 
@@ -98,60 +96,56 @@ También se puede ejecutar desde IntelliJ con clic derecho sobre `DemoPatrones`.
 
 ```
 Entrega3/
+├── DEMO.md                            # guía para mostrar en clase
 ├── pom.xml
 ├── mvnw / mvnw.cmd / .mvn/            # Maven Wrapper
 ├── src/main/java/com/smd/inventario/
 │   ├── InventarioApplication.java
-│   ├── config/                        # seeder y wiring
-│   ├── demo/                          # demo de consola (State + Composite)
-│   ├── presentation/
-│   │   ├── controller/                # REST
-│   │   ├── dto/                       # request/response HTTP
-│   │   └── adapter/                   # Adapter de lectores QR
+│   ├── config/                        # seeder de datos de ejemplo
 │   ├── domain/
-│   │   ├── model/                     # ItemInventario, Movimiento, enums
-│   │   ├── dto/                       # DTOs internos del dominio
-│   │   ├── state/                     # State
-│   │   ├── composite/                 # Composite
-│   │   ├── decorator/                 # Decorator
-│   │   ├── factory/                   # Simple Factory
-│   │   ├── strategy/                  # Strategy
-│   │   ├── observer/                  # Observer
-│   │   ├── service/                   # GestorDeStock (Singleton), consultas
-│   │   ├── facade/                    # Facade
-│   │   ├── port/                      # interfaces de persistencia
+│   │   ├── model/                     # ItemInventario, base, Movimiento, enums
+│   │   ├── state/                     # State: los 4 estados
+│   │   ├── composite/                 # Composite: Colchon y Lote
 │   │   └── exception/                 # errores de negocio
-│   └── persistence/
-│       ├── entity/                    # entidades JPA
-│       ├── repository/                # Spring Data
-│       └── mapper/                    # entidad <-> dominio
+│   ├── persistence/
+│   │   ├── entity/                    # entidad JPA
+│   │   └── repository/                # Spring Data
+│   └── presentation/
+│       ├── controller/                # health
+│       └── dto/                       # respuesta del health
 ├── src/main/resources/
 │   ├── application.properties
 │   ├── application-dev.properties     # H2 memoria
 │   ├── application-devfile.properties # H2 archivo
 │   └── data.sql                       # datos de ejemplo (dev)
 ├── data/                              # base H2 (generada, no se versiona)
-└── src/test/java/...                  # tests
+└── src/test/java/...                  # tests de State y Composite
 ```
 
-Cada paquete tiene un `package-info.java` que explica su responsabilidad.
+> Las carpetas de los patrones que faltan (`decorator`, `strategy`, `observer`,
+> `facade`, etc.) se crean en los próximos sprints. No están vacías en el repo
+> para no agregar ruido.
 
 ---
 
 ## Patrones y ubicación
 
-| Patrón | Paquete | Dueño |
-|---|---|---|
-| State, Composite, Singleton | `domain/state`, `domain/composite`, `domain/service` | A |
-| Decorator, Factory | `domain/decorator`, `domain/factory` | B |
-| Strategy, Observer | `domain/strategy`, `domain/observer` | C |
-| Repository / Mapper / JPA | `persistence/**` | D |
-| Facade, Adapter | `domain/facade`, `presentation/adapter` | E |
+| Patrón | Paquete | Dueño | Estado |
+|---|---|---|---|
+| **State** | `domain/state` | A | **Implementado** |
+| **Composite** | `domain/composite` | A | **Implementado** |
+| Singleton | `domain/service` | A | Pendiente |
+| Facade | `domain/facade` | E | Pendiente |
+| Decorator, Factory | `domain/decorator`, `domain/factory` | B | Pendiente |
+| Strategy, Observer | `domain/strategy`, `domain/observer` | C | Pendiente |
+| Repository / JPA | `persistence/**` | D | Base creada |
+| Adapter | `presentation/adapter` | E | Pendiente |
 
 ---
 
 ## Documentación del grupo
 
+- `DEMO.md` — guía para mostrar State + Composite en clase
 - `docs/PLAN-TRABAJO.md` — reparto, sprints y reglas de trabajo
 - `docs/equipo/CONTRATOS.md` — interfaces acordadas (**leer antes de codificar**)
 - `docs/equipo/ROL-*.md` — plan individual de cada integrante
