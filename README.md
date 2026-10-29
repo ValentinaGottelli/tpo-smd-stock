@@ -76,6 +76,24 @@ empezar de cero, detener la app y borrar `data/`.
 
 ---
 
+## Demo para mostrar (State + Composite)
+
+Sin Spring y sin base de datos: un `main` que muestra el ciclo de vida
+(`PRODUCIDO → EN_DEPOSITO → RESERVADO → DESPACHADO`), un lote de 5 colchones con
+cambio de estado en cascada y las transiciones rechazadas.
+
+```powershell
+.\mvnw.cmd -q compile
+java -cp target/classes com.smd.inventario.demo.DemoPatrones
+```
+
+También se puede ejecutar desde IntelliJ con clic derecho sobre `DemoPatrones`.
+
+- Código: `domain/state`, `domain/composite` y `demo/DemoPatrones.java`
+- Tests: `StateTest` (16 combinaciones) y `CompositeTest`
+
+---
+
 ## Estructura
 
 ```
@@ -85,6 +103,7 @@ Entrega3/
 ├── src/main/java/com/smd/inventario/
 │   ├── InventarioApplication.java
 │   ├── config/                        # seeder y wiring
+│   ├── demo/                          # demo de consola (State + Composite)
 │   ├── presentation/
 │   │   ├── controller/                # REST
 │   │   ├── dto/                       # request/response HTTP
