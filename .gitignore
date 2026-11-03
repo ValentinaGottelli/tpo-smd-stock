@@ -22,3 +22,7 @@ Thumbs.db
 
 # Base H2 en archivo (perfil devfile)
 data/
+
+# Notas locales (no subir)
+NOTAS-LOCAL.md
+GUION-VIDEO.md

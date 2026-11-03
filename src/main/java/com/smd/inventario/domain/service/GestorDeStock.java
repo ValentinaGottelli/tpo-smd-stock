@@ -10,8 +10,8 @@ import com.smd.inventario.domain.model.EstadoProducto;
 import com.smd.inventario.domain.model.ItemInventario;
 import com.smd.inventario.domain.model.Movimiento;
 import com.smd.inventario.domain.model.TipoMovimiento;
+import com.smd.inventario.domain.factory.FabricaMovimiento;
 import com.smd.inventario.domain.port.RepositorioItems;
-import com.smd.inventario.domain.port.RepositorioMovimientos;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,12 +30,12 @@ import java.util.function.Consumer;
 public class GestorDeStock {
 
     private final RepositorioItems repositorioItems;
-    private final RepositorioMovimientos repositorioMovimientos;
+    private final FabricaMovimiento fabricaMovimiento;
 
     public GestorDeStock(RepositorioItems repositorioItems,
-                         RepositorioMovimientos repositorioMovimientos) {
+                         FabricaMovimiento fabricaMovimiento) {
         this.repositorioItems = repositorioItems;
-        this.repositorioMovimientos = repositorioMovimientos;
+        this.fabricaMovimiento = fabricaMovimiento;
     }
 
     public RespuestaEscaneoDTO ingresar(EscaneoDTO solicitud) {
@@ -106,8 +106,6 @@ public class GestorDeStock {
         accion.accept(item);
         EstadoProducto estadoNuevo = item.getEstado();
 
-        repositorioItems.guardar(item);
-
         LocalDateTime fechaHora = LocalDateTime.now();
         Movimiento movimiento = new Movimiento(
                 item.getCodigo(),
@@ -118,7 +116,10 @@ public class GestorDeStock {
                 estadoAnterior,
                 estadoNuevo,
                 item.getCantidad());
-        repositorioMovimientos.guardar(movimiento);
+        // Decorator (rol B): los controles corren antes de persistir el ítem; si
+        // rechazan, el cambio de estado queda solo en memoria y se descarta.
+        fabricaMovimiento.crear(tipo).registrar(solicitud, movimiento);
+        repositorioItems.guardar(item);
 
         return new RespuestaEscaneoDTO(
                 item.getCodigo(),

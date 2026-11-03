@@ -553,14 +553,13 @@ expone solo los getters necesarios más `actualizar(...)`.
 
 Para no prometer de más:
 
-- **Decorator y Factory** (B): validación de embalaje, FIFO y alerta de stock
-  bajo. El campo `embalajeOk` ya viaja en `EscaneoDTO`, pero todavía no se usa.
 - **Strategy y Observer** (C): reglas por canal de venta y notificaciones de
   stock. `CanalVenta` ya existe en el modelo.
 - **Lector de QR simulado** (Adapter de entrada, E): hoy el código llega por el
   body del request.
-- **FIFO**: `RepositorioItems.buscarMasAntiguoEnDeposito()` ya está en el puerto,
-  pero todavía no lo usa ninguna operación.
+
+**Ya hecho (B):** Decorator y Simple Factory — validación de embalaje, FIFO y
+alerta de stock bajo. Detalle en [`docs/equipo/casos-B.md`](docs/equipo/casos-B.md).
 
 > “La base de la entrega es el dominio y la API funcionando. Los patrones que
 > faltan ya tienen contrato acordado en `docs/equipo/CONTRATOS.md`.”

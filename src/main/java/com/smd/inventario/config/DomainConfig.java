@@ -1,5 +1,6 @@
 package com.smd.inventario.config;
 
+import com.smd.inventario.domain.factory.FabricaMovimiento;
 import com.smd.inventario.domain.facade.FachadaEscaneo;
 import com.smd.inventario.domain.facade.FachadaEscaneoImpl;
 import com.smd.inventario.domain.port.RepositorioItems;
@@ -21,9 +22,17 @@ import org.springframework.context.annotation.Configuration;
 public class DomainConfig {
 
     @Bean
+    public FabricaMovimiento fabricaMovimiento(RepositorioItems repositorioItems,
+                                               RepositorioMovimientos repositorioMovimientos,
+                                               @Value("${app.stock.umbral-minimo:10}")
+                                               int umbralMinimo) {
+        return new FabricaMovimiento(repositorioMovimientos, repositorioItems, umbralMinimo);
+    }
+
+    @Bean
     public GestorDeStock gestorDeStock(RepositorioItems repositorioItems,
-                                       RepositorioMovimientos repositorioMovimientos) {
-        return new GestorDeStock(repositorioItems, repositorioMovimientos);
+                                       FabricaMovimiento fabricaMovimiento) {
+        return new GestorDeStock(repositorioItems, fabricaMovimiento);
     }
 
     @Bean

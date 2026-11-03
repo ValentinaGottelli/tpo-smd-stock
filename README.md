@@ -296,7 +296,7 @@ Entrega3/
 | **Adapter** | `persistence/repository` | E | Implementado (puertos a JPA) |
 | **Repository** | `persistence/repository` | D | Implementado (Spring Data + puerto) |
 | **Mapper** | `persistence/mapper` | D | Implementado |
-| Decorator, Factory | `domain/decorator`, `domain/factory` | B | Pendiente |
+| **Decorator**, **Simple Factory** | `domain/decorator`, `domain/factory` | B | Implementado (ver [`docs/equipo/casos-B.md`](docs/equipo/casos-B.md)) |
 | Strategy, Observer | `domain/strategy`, `domain/observer` | C | Pendiente |
 
 > El contrato de los patrones pendientes ya está acordado en
