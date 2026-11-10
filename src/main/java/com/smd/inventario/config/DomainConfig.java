@@ -1,22 +1,24 @@
 package com.smd.inventario.config;
 
-import com.smd.inventario.domain.factory.FabricaMovimiento;
 import com.smd.inventario.domain.facade.FachadaEscaneo;
 import com.smd.inventario.domain.facade.FachadaEscaneoImpl;
+import com.smd.inventario.domain.factory.FabricaMovimiento;
+import com.smd.inventario.domain.observer.DashboardAuditoria;
+import com.smd.inventario.domain.observer.ModuloVentas;
+import com.smd.inventario.domain.observer.ObservadorStock;
 import com.smd.inventario.domain.port.RepositorioItems;
 import com.smd.inventario.domain.port.RepositorioMovimientos;
 import com.smd.inventario.domain.service.GestorDeStock;
 import com.smd.inventario.domain.service.ServicioConsultas;
+import com.smd.inventario.domain.strategy.SelectorEstrategia;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.List;
+
 /**
- * Cablea los servicios puros del dominio como beans de Spring.
- *
- * <p>El dominio no lleva anotaciones: esta clase es la que decide cómo se
- * construyen sus objetos y garantiza una única instancia de cada servicio
- * (Singleton) durante la vida de la aplicación.</p>
+ * Cablea los servicios del dominio e inicializa el Singleton puro de GestorDeStock.
  */
 @Configuration
 public class DomainConfig {
@@ -30,9 +32,27 @@ public class DomainConfig {
     }
 
     @Bean
+    public SelectorEstrategia selectorEstrategia() {
+        return new SelectorEstrategia();
+    }
+
+    @Bean
+    public ModuloVentas moduloVentas() {
+        return new ModuloVentas();
+    }
+
+    @Bean
+    public DashboardAuditoria dashboardAuditoria() {
+        return new DashboardAuditoria();
+    }
+
+    @Bean
     public GestorDeStock gestorDeStock(RepositorioItems repositorioItems,
-                                       FabricaMovimiento fabricaMovimiento) {
-        return new GestorDeStock(repositorioItems, fabricaMovimiento);
+                                       FabricaMovimiento fabricaMovimiento,
+                                       SelectorEstrategia selectorEstrategia,
+                                       List<ObservadorStock> observadores) {
+        // Inicializa el Singleton tradicional GoF (constructor privado + getInstance)
+        return GestorDeStock.inicializar(repositorioItems, fabricaMovimiento, selectorEstrategia, observadores);
     }
 
     @Bean

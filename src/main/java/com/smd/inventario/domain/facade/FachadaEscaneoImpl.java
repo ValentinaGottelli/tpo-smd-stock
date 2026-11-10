@@ -7,9 +7,6 @@ import com.smd.inventario.domain.service.GestorDeStock;
 /**
  * Implementación de {@link FachadaEscaneo}.
  *
- * <p>No contiene reglas de negocio: normaliza el usuario y delega cada
- * operación en el gestor. El usuario por defecto se inyecta desde la
- * configuración de la aplicación.</p>
  */
 public final class FachadaEscaneoImpl implements FachadaEscaneo {
 

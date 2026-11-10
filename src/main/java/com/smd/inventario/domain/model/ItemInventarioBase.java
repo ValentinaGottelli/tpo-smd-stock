@@ -8,12 +8,6 @@ import java.util.Objects;
 
 /**
  * Base común de los ítems del inventario.
- *
- * <p>Implementa la parte del patrón <b>State</b> que no depende del estado
- * concreto: guarda el estado actual y delega en él cada operación. Las
- * subclases ({@link com.smd.inventario.domain.composite.Colchon} y
- * {@link com.smd.inventario.domain.composite.Lote}) solo aportan su
- * comportamiento propio del patrón <b>Composite</b>.</p>
  */
 public abstract class ItemInventarioBase implements ItemInventario {
 
