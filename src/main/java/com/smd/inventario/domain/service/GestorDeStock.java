@@ -6,59 +6,141 @@ import com.smd.inventario.domain.dto.EscaneoDTO;
 import com.smd.inventario.domain.dto.RespuestaEscaneoDTO;
 import com.smd.inventario.domain.exception.RecursoNoEncontradoException;
 import com.smd.inventario.domain.exception.ReglaDeNegocioException;
+import com.smd.inventario.domain.factory.FabricaMovimiento;
 import com.smd.inventario.domain.model.EstadoProducto;
 import com.smd.inventario.domain.model.ItemInventario;
 import com.smd.inventario.domain.model.Movimiento;
 import com.smd.inventario.domain.model.TipoMovimiento;
-import com.smd.inventario.domain.factory.FabricaMovimiento;
+import com.smd.inventario.domain.observer.EventoStock;
+import com.smd.inventario.domain.observer.ObservadorStock;
 import com.smd.inventario.domain.port.RepositorioItems;
+import com.smd.inventario.domain.strategy.SelectorEstrategia;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 /**
- * Punto único del dominio para ejecutar operaciones de stock.
+ * Punto unico del dominio para ejecutar operaciones de stock.
  *
- * <p>Es Java puro: no conoce Spring ni HTTP. Se registra como un bean único en
- * {@code config.DomainConfig}, por lo que Spring garantiza una sola instancia
- * durante toda la vida de la aplicación (Singleton).</p>
+ * <p>Implementa el patron <b>Singleton clasico (GoF)</b> con constructor privado
+ * y metodo estatico {@link #getInstance()}, garantizando una unica instancia
+ * en memoria independientemente del framework.</p>
  *
- * <p>Cada operación delega la transición en el patrón State del ítem, persiste
- * el nuevo estado y registra el movimiento de auditoría.</p>
+ * <p>Orquesta los patrones del TP:
+ * <ul>
+ *   <li><b>State:</b> delega las transiciones de ciclo de vida en el item.</li>
+ *   <li><b>Composite:</b> opera transparentemente con colchones individuales o lotes.</li>
+ *   <li><b>Strategy:</b> valida reglas de reserva segun el canal de venta.</li>
+ *   <li><b>Decorator & Factory:</b> ejecuta validaciones encadenadas y alertas.</li>
+ *   <li><b>Observer:</b> notifica a los suscriptores tras cada movimiento exitoso.</li>
+ * </ul>
+ * </p>
  */
 public class GestorDeStock {
 
+    private static final Logger log = LoggerFactory.getLogger(GestorDeStock.class);
+
+    // Singleton clasico GoF
+    private static volatile GestorDeStock instancia;
+
     private final RepositorioItems repositorioItems;
     private final FabricaMovimiento fabricaMovimiento;
+    private final SelectorEstrategia selectorEstrategia;
+    private final List<ObservadorStock> observadores;
 
-    public GestorDeStock(RepositorioItems repositorioItems,
-                         FabricaMovimiento fabricaMovimiento) {
-        this.repositorioItems = repositorioItems;
-        this.fabricaMovimiento = fabricaMovimiento;
+    /**
+     * Constructor privado para implementar el patron Singleton estricto.
+     */
+    private GestorDeStock(RepositorioItems repositorioItems,
+                          FabricaMovimiento fabricaMovimiento,
+                          SelectorEstrategia selectorEstrategia,
+                          List<ObservadorStock> observadores) {
+        this.repositorioItems = Objects.requireNonNull(repositorioItems, "repositorioItems no puede ser nulo");
+        this.fabricaMovimiento = Objects.requireNonNull(fabricaMovimiento, "fabricaMovimiento no puede ser nula");
+        this.selectorEstrategia = selectorEstrategia != null ? selectorEstrategia : new SelectorEstrategia();
+        this.observadores = observadores != null ? new ArrayList<>(observadores) : new ArrayList<>();
+    }
+
+    /**
+     * Sobrecarga para inicializaciones simples.
+     */
+    public static GestorDeStock inicializar(RepositorioItems repositorioItems,
+                                            FabricaMovimiento fabricaMovimiento) {
+        return inicializar(repositorioItems, fabricaMovimiento, new SelectorEstrategia(), Collections.emptyList());
+    }
+
+    /**
+     * Inicializa o actualiza la instancia Singleton de GestorDeStock.
+     * Metodo sincronizado con doble comprobacion (double-checked locking) para ser seguro en hilos.
+     */
+    public static GestorDeStock inicializar(RepositorioItems repositorioItems,
+                                            FabricaMovimiento fabricaMovimiento,
+                                            SelectorEstrategia selectorEstrategia,
+                                            List<ObservadorStock> observadores) {
+        synchronized (GestorDeStock.class) {
+            instancia = new GestorDeStock(repositorioItems, fabricaMovimiento, selectorEstrategia, observadores);
+            return instancia;
+        }
+    }
+
+    /**
+     * Acceso clasico GoF al Singleton.
+     *
+     * @return la unica instancia de GestorDeStock
+     * @throws IllegalStateException si no fue inicializada previamente
+     */
+    public static GestorDeStock getInstance() {
+        GestorDeStock ref = instancia;
+        if (ref == null) {
+            synchronized (GestorDeStock.class) {
+                ref = instancia;
+                if (ref == null) {
+                    throw new IllegalStateException("GestorDeStock no ha sido inicializado aun.");
+                }
+            }
+        }
+        return ref;
+    }
+
+    public void agregarObservador(ObservadorStock observador) {
+        if (observador != null) {
+            this.observadores.add(observador);
+        }
+    }
+
+    public List<ObservadorStock> getObservadores() {
+        return Collections.unmodifiableList(observadores);
     }
 
     public RespuestaEscaneoDTO ingresar(EscaneoDTO solicitud) {
-        return ejecutar(solicitud, TipoMovimiento.INGRESO, "Ingreso registrado", ItemInventario::ingresar);
+        return ejecutar(solicitud, TipoMovimiento.INGRESO, "Ingreso registrado", null, ItemInventario::ingresar);
     }
 
     public RespuestaEscaneoDTO reservar(EscaneoDTO solicitud) {
-        return ejecutar(solicitud, TipoMovimiento.RESERVA, "Reserva registrada", ItemInventario::reservar);
+        return ejecutar(solicitud, TipoMovimiento.RESERVA, "Reserva registrada", item -> {
+            // Patron Strategy: validar canal de venta antes de cambiar de estado
+            selectorEstrategia.para(solicitud.canal()).validar(item);
+        }, ItemInventario::reservar);
     }
 
     public RespuestaEscaneoDTO cancelarReserva(EscaneoDTO solicitud) {
-        return ejecutar(solicitud, TipoMovimiento.CANCELACION, "Cancelacion registrada",
+        return ejecutar(solicitud, TipoMovimiento.CANCELACION, "Cancelacion registrada", null,
                 ItemInventario::cancelarReserva);
     }
 
     public RespuestaEscaneoDTO despachar(EscaneoDTO solicitud) {
-        return ejecutar(solicitud, TipoMovimiento.DESPACHO, "Despacho registrado", ItemInventario::despachar);
+        return ejecutar(solicitud, TipoMovimiento.DESPACHO, "Despacho registrado", null, ItemInventario::despachar);
     }
 
     /**
-     * Da de alta un colchón suelto en el inventario.
-     *
-     * @param estado inicial; si es {@code null} arranca en {@code PRODUCIDO}
+     * Da de alta un colchon suelto en el inventario.
      */
     public Colchon registrarColchon(String codigo, EstadoProducto estado, LocalDate fechaProduccion) {
         validarCodigoNuevo(codigo);
@@ -69,9 +151,7 @@ public class GestorDeStock {
     }
 
     /**
-     * Da de alta un lote y genera sus colchones hijos.
-     *
-     * @param cantidad número de colchones del lote; debe ser mayor a cero
+     * Da de alta un lote y genera sus colchones hijos (Composite).
      */
     public Lote registrarLote(String codigo, EstadoProducto estado, LocalDate fechaProduccion, int cantidad) {
         validarCodigoNuevo(codigo);
@@ -96,11 +176,17 @@ public class GestorDeStock {
     private RespuestaEscaneoDTO ejecutar(EscaneoDTO solicitud,
                                          TipoMovimiento tipo,
                                          String mensaje,
+                                         Consumer<ItemInventario> preValidacion,
                                          Consumer<ItemInventario> accion) {
         validarSolicitud(solicitud);
 
         ItemInventario item = repositorioItems.buscarPorCodigo(solicitud.codigo())
                 .orElseThrow(() -> new RecursoNoEncontradoException(solicitud.codigo()));
+
+        // Pre-validacion (ej. Strategy para reservas)
+        if (preValidacion != null) {
+            preValidacion.accept(item);
+        }
 
         EstadoProducto estadoAnterior = item.getEstado();
         accion.accept(item);
@@ -116,10 +202,13 @@ public class GestorDeStock {
                 estadoAnterior,
                 estadoNuevo,
                 item.getCantidad());
-        // Decorator (rol B): los controles corren antes de persistir el ítem; si
-        // rechazan, el cambio de estado queda solo en memoria y se descarta.
+
+        // Decorator: ejecuta validaciones y persistencia de movimiento
         fabricaMovimiento.crear(tipo).registrar(solicitud, movimiento);
         repositorioItems.guardar(item);
+
+        // Observer: notificar a los suscriptores
+        notificarObservadores(movimiento);
 
         return new RespuestaEscaneoDTO(
                 item.getCodigo(),
@@ -128,6 +217,18 @@ public class GestorDeStock {
                 item.getCantidad(),
                 mensaje + " para " + item.getCodigo(),
                 fechaHora);
+    }
+
+    private void notificarObservadores(Movimiento movimiento) {
+        int stockDisponible = repositorioItems.stockDisponible();
+        EventoStock evento = new EventoStock(movimiento, stockDisponible);
+        for (ObservadorStock observador : observadores) {
+            try {
+                observador.alOcurrirMovimiento(evento);
+            } catch (Exception e) {
+                log.error("Error notificando al observador {}: {}", observador.getClass().getSimpleName(), e.getMessage());
+            }
+        }
     }
 
     private void validarSolicitud(EscaneoDTO solicitud) {

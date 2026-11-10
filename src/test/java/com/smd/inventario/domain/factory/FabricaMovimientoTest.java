@@ -160,7 +160,7 @@ class FabricaMovimientoTest {
     @Test
     void gestorNoGuardaElItemSiUnControlRechaza() {
         agregar("C1", EstadoProducto.PRODUCIDO, 1);
-        GestorDeStock gestor = new GestorDeStock(repoItems, fabrica);
+        GestorDeStock gestor = GestorDeStock.inicializar(repoItems, fabrica);
 
         assertThrows(ReglaDeNegocioException.class,
                 () -> gestor.ingresar(solicitud("C1", TipoMovimiento.INGRESO, false)));

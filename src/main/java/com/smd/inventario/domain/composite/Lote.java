@@ -12,10 +12,6 @@ import java.util.Objects;
 /**
  * Compuesto del patrón Composite: agrupa colchones (u otros lotes) y se
  * comporta como un ítem más.
- *
- * <p>La cantidad es la suma de sus hijos y cualquier cambio de estado se
- * propaga en cascada. El lote debe armarse antes de cambiar de estado: si se
- * agregan hijos después, quedan con el estado con el que fueron creados.</p>
  */
 public final class Lote extends ItemInventarioBase {
 
@@ -27,9 +23,6 @@ public final class Lote extends ItemInventarioBase {
 
     /**
      * Agrega un ítem al lote.
-     *
-     * @throws IllegalArgumentException si el ítem es nulo, es el mismo lote o ya
-     *                                  fue despachado
      */
     public void agregar(ItemInventario item) {
         Objects.requireNonNull(item, "El item no puede ser nulo");
@@ -45,10 +38,6 @@ public final class Lote extends ItemInventarioBase {
 
     /**
      * Reconstruye un lote que ya estaba persistido.
-     *
-     * <p>No aplica las validaciones de {@link #agregar(ItemInventario)} porque
-     * un lote despachado tiene hijos despachados y debe poder leerse desde la
-     * base sin errores.</p>
      */
     public static Lote reconstruir(String codigo,
                                    EstadoProducto estado,
